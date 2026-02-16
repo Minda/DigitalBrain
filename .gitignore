@@ -83,4 +83,5 @@ conversations/
 
 # Logs
 *.log
+*_log.txt
 logs/

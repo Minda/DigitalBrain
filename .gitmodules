@@ -1,0 +1,3 @@
+[submodule "app/mcp/gmail"]
+	path = app/mcp/gmail
+	url = https://github.com/jeremyjordan/mcp-gmail
