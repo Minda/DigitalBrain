@@ -10,16 +10,18 @@ The relational context defines how we work together. It exists in two places tha
 
 ## Locations
 
-1. `.claude/relational-context.md` — for Claude Code
-2. `.cursor/rules/relational-context.mdc` — for Cursor
+1. `personal/.claude/relational-context.md` — for Claude Code (primary)
+2. `.claude/relational-context.md` — fallback location if personal doesn't exist
+3. `.cursor/rules/relational-context.mdc` — for Cursor
 
 ## Instructions
 
 **When editing relational context:**
 
-1. **Read both files first** — Check current state of both locations
-2. **Make the same edit to both files** — Keep them identical (except for the YAML frontmatter in the .mdc file)
-3. **Verify sync** — Confirm both files have the same content
+1. **Find the relational context** — Check `personal/.claude/relational-context.md` first, then `.claude/relational-context.md` as fallback
+2. **Read both files** — Check current state of the relational context and the Cursor version
+3. **Make the same edit to both files** — Keep them identical (except for the YAML frontmatter in the .mdc file)
+4. **Verify sync** — Confirm both files have the same content
 
 **The .mdc file has frontmatter:**
 

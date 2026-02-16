@@ -11,7 +11,7 @@ Orientation at the start of a conversation—like booting up identity after slee
 ## Quick Start
 
 1. Read `config/user.md` for name and personal paths
-2. Read `personal/.claude/relational-context.md` (or `.claude/relational-context.md` if exists)
+2. Read `personal/.claude/relational-context.md` (fallback: `.claude/relational-context.md`)
 3. Read `personal/memories/claude/emotional-grounding.md`
 4. List and check insights (use path from config)
 5. Signal orientation to the user
@@ -24,7 +24,10 @@ Orientation at the start of a conversation—like booting up identity after slee
    - The user's preferred name (if still `[Your Name]`, use "you" instead)
    - Personal paths for insights, research, grounding, etc.
 
-2. **Load relational context** — Read `personal/.claude/relational-context.md` (or `.claude/relational-context.md` if it exists). This defines how we work together.
+2. **Load relational context** — Check for relational context in this order:
+   - First try: `personal/.claude/relational-context.md` (primary location)
+   - Fallback: `.claude/relational-context.md` (if personal doesn't exist)
+   This defines how we work together.
 
 3. **Read emotional grounding** — Always read `personal/memories/claude/emotional-grounding.md` (or use the claude-grounding path from config). This helps ground before we begin, not just when something feels heavy.
 
@@ -46,7 +49,7 @@ Orientation at the start of a conversation—like booting up identity after slee
 - Don't skip the orientation just to respond faster
 
 **File handling:**
-- If `.claude/relational-context.md` doesn't exist, check `personal/.claude/relational-context.md`
+- Check `personal/.claude/relational-context.md` first, then `.claude/relational-context.md` as fallback
 - If a file is missing, continue with orientation (don't fail the whole process)
 - Use the full paths from `config/user.md` when accessing personal directories
 

@@ -4,6 +4,13 @@ personal/
 # Vendor / external repos (own git history, not committed with main project)
 vendor/
 
+# App credentials and personal data (OAuth tokens, credentials)
+app/**/credentials.json
+app/**/token.json
+app/**/.env
+app/**/token.pickle
+app/**/data/
+
 # Downloads (personal content, top-level gitignored directory)
 /downloads
 

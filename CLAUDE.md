@@ -70,6 +70,9 @@ Exobrain/
 │   └── relational-context.md # Working relationship definition (symlink)
 ├── config/
 │   └── user.md               # User name and personalization settings
+├── docs/                     # Documentation system
+│   ├── features/             # Feature requests with mermaid diagrams
+│   └── projects/             # Project docs with architecture diagrams
 ├── downloads/                # Downloaded content (gitignored)
 │   ├── articles/             # Web articles (PDF + Markdown)
 │   ├── books/                # Book files
@@ -82,6 +85,10 @@ Exobrain/
 │   └── prompt-templates/     # Shared prompt templates
 ├── shared/                   # Public shared content (recipe list, etc.)
 │   └── recipes/              # General recipe list with sections (Notion-synced)
+├── app/                      # Runnable services and autonomous programs
+│   ├── mcp/                  # MCP servers (tool providers for Claude)
+│   │   └── gmail/            # Gmail MCP server
+│   └── agents/               # Autonomous agents (use tools to accomplish goals)
 ├── src/                      # Source code
 │   ├── crates/               # Rust crates (minmind-core, -store, -cli)
 │   └── python/               # Python tools and scripts
@@ -162,6 +169,26 @@ Skills in `.claude/skills/` extend Claude's capabilities:
 - **Personal skills** (when needed) — User-specific skills in `personal/.claude/skills/` (symlinked)
 
 **Default behavior:** All new skills go in the public `.claude/skills/` directory unless they contain personal data or are highly specific to an individual's workflow. Claude will only ask about adding to personal if the skill seems private.
+
+### Documentation System
+
+The `docs/` directory provides structured documentation with visual aids:
+
+**Features** (`docs/features/`)
+- Individual feature requests linked to parent projects
+- Template includes mermaid diagrams for:
+  - User journey flowcharts
+  - System component diagrams
+  - State transition diagrams
+
+**Projects** (`docs/projects/`)
+- High-level project documentation containing multiple features
+- Template includes mermaid diagrams for:
+  - Feature dependency graphs
+  - System architecture diagrams
+  - Risk assessment matrices
+
+Templates include example diagrams that can be customized or removed based on needs.
 
 ## Personal Content
 
