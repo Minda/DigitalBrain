@@ -1,0 +1,17 @@
+{
+  "name": "exobrain-audio-cli",
+  "version": "1.0.0",
+  "description": "CLI audio player for Exobrain with pause/resume/rewind/fast-forward",
+  "type": "module",
+  "scripts": {
+    "play": "node audio-player.js"
+  },
+  "dependencies": {
+    "@libsql/client": "^0.14.0",
+    "node-mpv": "^2.3.0",
+    "chalk": "^5.3.0"
+  },
+  "engines": {
+    "node": ">=18.0.0"
+  }
+}
