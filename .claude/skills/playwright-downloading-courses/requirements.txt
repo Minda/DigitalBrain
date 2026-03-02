@@ -1,0 +1,14 @@
+# Python dependencies for playwright-downloading-courses skill
+
+# Browser automation
+playwright>=1.40.0
+
+# YouTube transcript extraction
+youtube-transcript-api>=0.6.0
+
+# Note: Other dependencies are handled by the download-url skill
+# which uses inline PEP 723 dependency declarations:
+#   - beautifulsoup4
+#   - readability-lxml
+#   - weasyprint
+#   - markdownify
