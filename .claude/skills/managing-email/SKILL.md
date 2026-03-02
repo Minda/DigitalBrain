@@ -20,7 +20,69 @@ This skill provides tools and workflows for:
 
 ## Core Workflows
 
-### 1. Label Cleanup & Deletion
+### 1. Bulk Archive / Trash / Mark-Read by Query
+
+Clean up large volumes of email in one command using any Gmail search query.
+
+#### Python CLI (`src/python/gmail_bulk_operations.py`)
+
+```bash
+# Dry-run first — always preview before running
+uv run src/python/gmail_bulk_operations.py \
+    --query "category:social -(label:important OR label:starred)" \
+    --operation archive \
+    --dry-run
+
+# Archive all Social emails (not important/starred)
+uv run src/python/gmail_bulk_operations.py \
+    --query "category:social -(label:important OR label:starred)" \
+    --operation archive
+
+# Trash old promotions
+uv run src/python/gmail_bulk_operations.py \
+    --query "category:promotions older_than:1y" \
+    --operation trash
+
+# Mark all unread social emails as read
+uv run src/python/gmail_bulk_operations.py \
+    --query "is:unread category:social" \
+    --operation mark-read
+```
+
+**Supported operations:** `archive` · `trash` · `mark-read` · `mark-unread`
+
+**How it works:** Paginates all matching messages (no cap), then uses Gmail's
+`batchModify` API in batches of 1000 — far fewer API calls than per-message ops.
+
+#### Via MCP Tool (interactive with Claude)
+
+```python
+# Dry-run — count without changing anything
+batch_archive_messages(
+    query="category:social -(label:important OR label:starred)",
+    dry_run=True
+)
+
+# Run for real
+batch_archive_messages(
+    query="category:social -(label:important OR label:starred)"
+)
+```
+
+#### Workflow: Archive Social Inbox
+
+1. Dry-run to confirm count
+2. Run archive
+3. Verify in Gmail that Social tab is clear
+
+#### Safety
+
+- Always do `--dry-run` first to see the count
+- `archive` is reversible (emails stay in All Mail)
+- `trash` gives 30-day recovery window
+- Important/starred emails are excluded by the recommended query pattern
+
+### 2. Label Cleanup & Deletion
 
 Clean up years of accumulated Gmail labels systematically.
 
@@ -124,13 +186,14 @@ mark_message_read(msg_id)
 ## Files and Locations
 
 ### Scripts
+- `src/python/gmail_bulk_operations.py` - Bulk archive/trash/mark-read by query (CLI)
 - `src/python/list_gmail_labels.py` - Display all labels organized by type
 - `docs/features/2026-02-15-delete-old-gmail-labels.md` - Deletion plan with keep/delete lists
 - `docs/projects/2026-02-15-email-management.md` - Overall email management project
 
 ### MCP Server
-- `app/mcp/gmail/mcp_gmail/server.py` - MCP tools for label operations
-- `app/mcp/gmail/mcp_gmail/gmail.py` - Core Gmail API functions
+- `app/mcp/gmail/mcp_gmail/server.py` - MCP tools (`batch_archive_messages` + label ops)
+- `app/mcp/gmail/mcp_gmail/gmail.py` - Core Gmail API functions (`list_all_message_ids`, `batch_modify_messages_labels`, etc.)
 
 ### Data Storage
 All email data should be in `personal/` (private repository):
@@ -267,3 +330,8 @@ Use this skill when:
 - "too many Gmail labels"
 - "email label management"
 - "gmail cleanup"
+- "archive social emails"
+- "bulk archive inbox"
+- "delete everything matching"
+- "clear out promotions"
+- "batch email operation"

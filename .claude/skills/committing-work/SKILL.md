@@ -131,6 +131,43 @@ After committing and pushing, return:
 3. Uses user's hint in message: `feat: Add PDF processing skill`
 4. Confirms with user, then commits and pushes
 
+## Multi-Commit Workflows
+
+When the user says "create as many commits as you think makes sense" or there are many untracked files:
+
+### Survey First
+
+Before committing anything, explore what's there:
+1. Run `git status` to see the full picture
+2. For untracked directories, explore their contents to understand what they are
+3. Group changes by domain/concern (skills, docs, tools, plans, config, etc.)
+4. Create a todo list tracking each planned commit
+
+### Group by Domain
+
+Logical groupings beat alphabetical. Good commit boundaries:
+- Project config changes together (.gitignore, CLAUDE.md, workspace files)
+- Documentation system as one unit
+- Related skills together
+- Python tools grouped by purpose (email tools, image tools, etc.)
+- Plans together
+
+### Flag Before Committing
+
+Watch for things that need decisions before they get committed:
+- **Misplaced files** — screenshots at project root, files in wrong directories
+- **Duplicate files** — "file copy.md" variants (diff against original; delete if identical, keep if modified)
+- **Log/output files** — should be gitignored, not committed
+- **Directories with their own `.git`** — need submodule decision, can't just `git add`
+- **Sensitive files** — credentials, tokens, .env files
+
+### Submodule Gotchas
+
+If adding a git submodule in the same session as other commits:
+- **`git submodule add` auto-stages** `.gitmodules` and the submodule reference — commit other changes first if you want clean separation
+- **Existing cloned repo → submodule**: back up local modifications, remove directory, `git submodule add <url> <path>`, restore modifications
+- Credentials in submodules should be covered by parent `.gitignore` patterns (e.g., `app/**/credentials.json`)
+
 ## When to Invoke
 
 **Do invoke** when user says: "commit", "git commit", "commit my changes", "push this", "save to git"
