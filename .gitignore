@@ -85,3 +85,9 @@ conversations/
 *.log
 *_log.txt
 logs/
+
+# Data directory (module databases, generated content)
+data/
+
+# Node.js (app/web/)
+node_modules/
