@@ -8,17 +8,15 @@ import type { Job } from "./kanban-card";
 // ---------------------------------------------------------------------------
 // Relevance configuration
 // ---------------------------------------------------------------------------
-type RelevanceLevel = 0 | 1 | 2 | 3 | 4 | 5;
+type RelevanceLevel = 0 | 1 | 2 | 3;
 
 const RELEVANCE_CONFIG: Record<
   number,
   { label: string; badge: string; badgeColor: string; defaultExpanded: boolean }
 > = {
-  5: { label: "Strong Match", badge: "5", badgeColor: "bg-emerald-500 text-white", defaultExpanded: true },
-  4: { label: "Good Match", badge: "4", badgeColor: "bg-blue-500 text-white", defaultExpanded: true },
-  3: { label: "Moderate", badge: "3", badgeColor: "bg-amber-500 text-white", defaultExpanded: false },
-  2: { label: "Weak Match", badge: "2", badgeColor: "bg-orange-500 text-white", defaultExpanded: false },
-  1: { label: "Poor Match", badge: "1", badgeColor: "bg-red-500 text-white", defaultExpanded: false },
+  1: { label: "Perfect Match", badge: "1", badgeColor: "bg-emerald-500 text-white", defaultExpanded: true },
+  2: { label: "Good Match", badge: "2", badgeColor: "bg-blue-500 text-white", defaultExpanded: true },
+  3: { label: "Distant Match", badge: "3", badgeColor: "bg-amber-500 text-white", defaultExpanded: false },
   0: { label: "Unclassified", badge: "?", badgeColor: "bg-zinc-400 text-white", defaultExpanded: false },
 };
 
@@ -52,7 +50,7 @@ export function RelevanceSection({
   const droppableId = `column-${stagePrefix}-${level}`;
   const { setNodeRef, isOver } = useDroppable({ id: droppableId });
 
-  // Always show sections for level 1-5 (empty drop targets are helpful)
+  // Always show sections for level 1-3 (empty drop targets are helpful)
   // Only hide level 0 (Unclassified) when empty
   if (jobs.length === 0 && level === 0 && !isOver) return null;
 

@@ -2,7 +2,8 @@ import { db } from "@/modules/jobs/db";
 import { jobs, scrapeRuns } from "@/modules/jobs/schema";
 import { desc } from "drizzle-orm";
 import Link from "next/link";
-import { ScrapeButton } from "./scrape-button";
+import { ScrapePanel } from "./scrape-panel";
+import { ClassifyButton } from "./classify-button";
 import { KanbanBoard } from "./kanban-board";
 
 export const dynamic = "force-dynamic";
@@ -34,7 +35,10 @@ export default async function JobsPage() {
               Job Pipeline
             </h1>
           </div>
-          <ScrapeButton />
+          <div className="flex items-center gap-3">
+            <ClassifyButton />
+            <ScrapePanel />
+          </div>
         </div>
 
         {/* Kanban board */}

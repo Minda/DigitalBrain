@@ -54,7 +54,7 @@ Five tables in `data/jobs.db`:
 | `source`           | TEXT    | NOT NULL                | Source identifier, e.g. `"hn"`                      |
 | `source_id`        | TEXT    |                         | ID within source (HN comment ID)                    |
 | `stage`            | TEXT    | DEFAULT `"inbox"`       | Pipeline stage: `inbox`, `viewed`, `applied`, `dismissed` |
-| `relevance`        | INTEGER | DEFAULT 0               | 0 = unclassified, 1 = poor → 5 = strong match      |
+| `relevance`        | INTEGER | DEFAULT 0               | 0 = unclassified, 1 = perfect, 2 = good, 3 = distant match |
 | `starred`          | INTEGER | DEFAULT 0               | Boolean (0/1) — user-flagged highlight              |
 | `summary`          | TEXT    |                         | LLM-generated 2-3 sentence summary                  |
 | `score`            | REAL    |                         | Computed relevance score (from classifier)           |
@@ -69,7 +69,7 @@ Five tables in `data/jobs.db`:
 
 **Pipeline stages:** `inbox` → `viewed` → `applied` (or `dismissed`). Jobs also appear in a computed "Stale" column if they've been in inbox >5 days.
 
-**Relevance levels:** 0 = unclassified, 1 = poor match, 2 = weak, 3 = moderate, 4 = good, 5 = strong match. Levels 4–5 are expanded by default in the Kanban Inbox column.
+**Relevance levels:** 0 = unclassified, 1 = perfect match, 2 = good match, 3 = distant match. Levels 1–2 are expanded by default in the Kanban Inbox column.
 
 **Dedup key:** `source` + `source_id`. On re-scrape, existing jobs get their `description` and `updated_at` refreshed.
 
@@ -128,7 +128,7 @@ Superseded by the `events` table. Remains in the schema but is no longer populat
 
 ## Classification Pipeline
 
-The classifier auto-rates job relevance (1–5) using Claude Haiku with structured output. User corrections feed back as few-shot examples on subsequent runs, creating a self-improving loop.
+The classifier auto-rates job relevance (1–3) using Claude Haiku with structured output. User corrections feed back as few-shot examples on subsequent runs, creating a self-improving loop.
 
 ### How it works
 
@@ -164,7 +164,7 @@ sequenceDiagram
 
 **User profile** (`config/job-profile.md`): Natural-language description of role preferences, tech interests, location, dealbreakers. Read at classification time. Must be filled in before the first run.
 
-**Structured output** (Zod schema): Each job produces `{ summary, relevance (1-5), breakdown: { roleMatch, techMatch, locationFit, dealbreakers, reasoning } }` via `generateObject()`.
+**Structured output** (Zod schema): Each job produces `{ summary, relevance (1-3), breakdown: { roleMatch (1-3), techMatch (1-3), locationFit (1-3), dealbreakers, reasoning } }` via `generateObject()`.
 
 **Few-shot calibration**: Queries the 10 most recent `relevance_corrected` events from the events table, joins with jobs to build calibration examples in the prompt. User corrections from the Kanban board directly improve future classification accuracy.
 
@@ -415,13 +415,13 @@ Update a job's stage, relevance, or starred status. Automatically logs events fo
 
 ```json
 // Request (all fields optional)
-{ "stage": "viewed", "relevance": 5, "starred": 1 }
+{ "stage": "viewed", "relevance": 1, "starred": 1 }
 
 // Response
 { "success": true, "job": { ... } }
 ```
 
-Validations: `stage` must be `inbox | viewed | applied | dismissed`, `relevance` must be 0–5, `starred` must be 0 or 1.
+Validations: `stage` must be `inbox | viewed | applied | dismissed`, `relevance` must be 0–3, `starred` must be 0 or 1.
 
 ### `POST /api/jobs/classify`
 
@@ -464,8 +464,8 @@ Log a user interaction event.
 ### Portal Homepage (`/`)
 
 The `JobsSummary` widget shows at a glance:
-- Stats: new jobs today, Top Match (relevance 5) count, last scrape time
-- Top 5 relevance-5 jobs (or most recent if none ranked yet)
+- Stats: new jobs today, Top Match (relevance 1) count, last scrape time
+- Top 5 relevance-1 jobs (or most recent if none ranked yet)
 - "View all jobs →" link
 
 ### Kanban Board (`/jobs`)
@@ -477,29 +477,26 @@ Four-column drag-and-drop board for triaging jobs:
 │     INBOX      │    VIEWED     │     STALE     │      APPLIED        │
 │    (12 new)    │     (5)       │     (23)      │       (2)           │
 │                │               │               │                     │
-│ ★★★★★ Strong  │ ┌───────────┐ │ ┌───────────┐ │ ┌───────────────┐   │
-│   Match (2) ▼  │ │ Job card  │ │ │ Job card  │ │ │ Job card      │   │
-│ ┌────────────┐ │ └───────────┘ │ └───────────┘ │ └───────────────┘   │
-│ │ ★ Company  │ │ ┌───────────┐ │ ┌───────────┐ │                     │
-│ │   Title    │ │ │ Job card  │ │ │ Job card  │ │                     │
-│ │   Location │ │ └───────────┘ │ └───────────┘ │                     │
-│ └────────────┘ │               │               │                     │
+│ 1 Perfect (2)▼ │ ┌───────────┐ │ ┌───────────┐ │ ┌───────────────┐   │
+│ ┌────────────┐ │ │ Job card  │ │ │ Job card  │ │ │ Job card      │   │
+│ │ ★ Company  │ │ └───────────┘ │ └───────────┘ │ └───────────────┘   │
+│ │   Title    │ │ ┌───────────┐ │ ┌───────────┐ │                     │
+│ │   Location │ │ │ Job card  │ │ │ Job card  │ │                     │
+│ └────────────┘ │ └───────────┘ │ └───────────┘ │                     │
 │                │               │               │                     │
-│ ★★★★☆ Good    │               │               │                     │
-│   Match (5) ▼  │               │               │                     │
+│ 2 Good (5) ▼  │               │               │                     │
 │ ┌────────────┐ │               │               │                     │
 │ │  ...       │ │               │               │                     │
 │ └────────────┘ │               │               │                     │
 │                │               │               │                     │
-│ ★★★☆☆ (8) ▸  │               │               │                     │
-│ ★★☆☆☆ (4) ▸  │               │               │                     │
-│ ★☆☆☆☆ (2) ▸  │               │               │                     │
-│ Unclassified   │               │               │                     │
+│ 3 Distant ▸   │               │               │                     │
+│   (8)          │               │               │                     │
+│ ? Unclassified │               │               │                     │
 │   (430) ▸     │               │               │                     │
 └────────────────┴───────────────┴───────────────┴─────────────────────┘
 ```
 
-**Inbox column:** Subsectioned by relevance level (5 at top → 0 at bottom). Levels 4–5 expanded by default, 1–3 and 0 collapsed. Count badge per subsection. Drag between subsections to change relevance.
+**Inbox column:** Subsectioned by relevance level (1 at top → 0 at bottom). Levels 1–2 expanded by default, 3 and 0 collapsed. Count badge per subsection. Drag between subsections to change relevance.
 
 **Viewed column:** Flat list, ordered by when viewed (most recent first).
 
@@ -515,11 +512,11 @@ Compact card with drag handle, star toggle, company/title/location, 2-line descr
 
 ### Job Detail Panel
 
-Slide-out panel from the right (480px wide). Shows full job description, metadata, clickable relevance stars (1–5), stage buttons (Inbox/Viewed/Applied/Dismiss), star toggle, and source link. Opening the panel auto-transitions inbox jobs to `viewed` stage and logs a `job_viewed` event.
+Slide-out panel from the right (480px wide). Shows full job description, metadata, relevance buttons (Perfect / Good / Distant), stage buttons (Inbox/Viewed/Applied/Dismiss), star toggle, and source link. Opening the panel auto-transitions inbox jobs to `viewed` stage and logs a `job_viewed` event.
 
 **AI Summary**: If the job has been classified, a purple summary box (`bg-purple-50`) appears above the full description with the LLM-generated 2–3 sentence summary.
 
-**AI Breakdown**: Below the relevance stars, a collapsible "AI Breakdown" section shows the classification components: role match (1–5), tech match (1–5), location fit (1–5), dealbreaker flag, and the LLM's reasoning. Collapsed by default, click to expand. Only appears after classification.
+**AI Breakdown**: Below the relevance buttons, a collapsible "AI Breakdown" section shows the classification components: role match (1–3), tech match (1–3), location fit (1–3), dealbreaker flag, and the LLM's reasoning. Collapsed by default, click to expand. Only appears after classification.
 
 ### Classify Button
 
@@ -532,10 +529,77 @@ Purple button in the page header next to "Scrape HN". Same state machine pattern
 
 Calls `POST /api/jobs/classify` with `batchSize: 50`, then `router.refresh()` to re-render the Kanban board with updated relevance sections.
 
+## Requirements & Test Cases (Plain English)
+
+These are the behavioral requirements for the scraping and UI pipeline, written as plain-English test cases. Each one maps to one or more automated tests when implemented.
+
+### Scraping
+
+**TC-S1: Fresh scrape adds new jobs**
+When a scraper runs against a job site with listings not already in the database, those listings are inserted as new rows in the `jobs` table. The `scrape_runs` record shows the correct count of new jobs inserted.
+
+**TC-S2: Re-scrape produces no duplicates**
+When a scraper runs against the same source a second time with no new listings, no new rows are inserted. The `scrape_runs` record shows `jobs_new = 0`. The total number of rows in the `jobs` table for that source is unchanged.
+
+**TC-S3: Deduplication key is `source` + `source_id`**
+When a listing already exists in the database (matching both `source` and `source_id`), it is updated in place rather than creating a new row. The job's `description` and `updated_at` are refreshed; all other fields remain unchanged. The database never has two rows with the same `source` + `source_id`.
+
+**TC-S4: Jobs older than 7 days are skipped**
+When a listing's `posted_at` date is more than 7 days before the scrape time, it is not inserted into the database. When a listing's `posted_at` is within the last 7 days, it is inserted normally. The `scrape_runs` record reflects how many listings were skipped for age.
+
+**TC-S5: Required fields must be present**
+Every inserted job has: `company` (non-empty), `description` (non-empty), `source`, `source_id`, `url`. Listings missing any required field are skipped. Skipped listings are counted in a `jobs_skipped` metric on the `scrape_runs` record.
+
+**TC-S6: Scrape run is always tracked**
+Every scrape creates a `scrape_runs` record with `status = "running"` before any fetching begins. On success, it is updated to `status = "completed"` with `jobs_found`, `jobs_new`, and `completed_at` populated. On failure, it is updated to `status = "failed"` with the error message. A scrape run record always exists even if the scrape crashes mid-way.
+
+**TC-S7: HN scraper finds the current monthly thread**
+The HN scraper identifies the most recent "Ask HN: Who is Hiring?" thread via the Algolia API. The thread title includes the current month and year. Threads titled "Who wants to be hired" or containing "freelancer" are excluded.
+
+**TC-S8: HN scraper parses job fields correctly**
+Given a raw HN comment in the format `Company | Title | Location | ...`, the scraper correctly extracts `company` (first segment), `title` (second segment), and `location` (segment containing location indicators). HTML entities and tags are stripped from the description. URLs within `<a>` tags are preserved in plain text.
+
+**TC-S9: 80k Hours scraper visits the job board and extracts listings**
+The 80k scraper navigates to the 80,000 Hours job board page. It extracts job cards with: company name, job title, location, and URL. It follows each card link to retrieve the full job description.
+
+**TC-S10: 80k Hours scraper reuses saved browser session**
+If a valid browser session file exists (`.auth/eightykhours_state.json`), the scraper reuses it without requiring a new login flow. If no session exists, the scraper completes the initial setup gracefully (does not crash or silently fail).
+
+---
+
+### Relevance Scale
+
+**TC-R1: Relevance uses a 3-point scale**
+Jobs are assigned a relevance value of 1, 2, or 3 (or 0 for unclassified). 1 = Perfect match (meets most criteria). 2 = Good match (meets some criteria, worth reviewing). 3 = Distant match (tangentially related). No values outside 0–3 are stored or accepted by the API.
+
+**TC-R2: Relevance 0 means unclassified, not irrelevant**
+A `relevance` of 0 means the job has not yet been evaluated. It is distinct from being dismissed or marked non-relevant. Unclassified jobs appear in a dedicated section of the inbox and are not treated as poor matches.
+
+---
+
+### UI Interactions
+
+**TC-U1: Dismiss a job with the X button**
+When a user clicks the X button on a job card, the job is marked as dismissed and removed from the active inbox view immediately (optimistic update). A popup appears offering the option to record a reason for dismissal (text input, optional). If a reason is submitted, a `job_dismissed` event is logged with the reason in the payload. If the popup is skipped or closed without a reason, the dismissal still occurs and the event is logged without a reason field.
+
+**TC-U2: Dismissed jobs do not reappear**
+Jobs marked as dismissed are not shown in the inbox, viewed, or stale columns. The dismissal persists across page refreshes. A dismissed job can only be recovered if there is an explicit "undo" action or a dedicated dismissed view.
+
+**TC-U3: Star a job with optional reason**
+When a user clicks the star button on a job card, the job is marked as starred. A popup appears offering the option to record a reason (e.g., "Target company", "Great ML team") — this is optional. If a reason is provided, a `job_starred` event is logged with `{ starred: true, reason: "..." }` in the payload. If skipped, the star is applied and the event is logged with `{ starred: true }` and no reason. Clicking the star again removes it and logs `{ starred: false }`.
+
+**TC-U4: Reasons are visible in the job detail panel**
+When a user opens a job's detail panel, any recorded dismissal reason or star reason from the events table is displayed. This helps the user remember why they flagged or dismissed a job.
+
+**TC-U5: Optimistic updates roll back on failure**
+When a user dismisses or stars a job, the UI updates immediately without waiting for the API. If the API call fails, the card reverts to its previous state and an error message is shown.
+
+---
+
 ## Future Phases
 
 - **Phase 1** (done): Scaffold, HN scraper, basic job list, portal homepage
-- **Phase 2** (done): Kanban board (4 columns), drag-and-drop, star/highlight, event logging, job detail panel, relevance 1–5 scale
+- **Phase 2** (done): Kanban board (4 columns), drag-and-drop, star/highlight, event logging, job detail panel, relevance 1–3 scale
 - **Phase 3** (in progress): LLM classification pipeline (done), user profile (done), few-shot calibration (done). Remaining: more scrapers, email digest
 - **Phase 4**: Embeddings, classifier training, pairwise ranking
 - **Phase 5**: AI-assisted applications

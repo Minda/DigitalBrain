@@ -1,6 +1,6 @@
 # Documentation Hub
 
-Welcome to the Exobrain documentation system. This directory contains structured documentation for projects, features, and other system components.
+Welcome to the Exobrain documentation system. **All documentation for the system should be contained in this `/docs` directory.** This ensures a single source of truth for all project documentation, feature specs, and system architecture.
 
 ## Mermaid Diagram Support
 
@@ -28,6 +28,13 @@ High-level project documentation. Projects contain multiple related features.
 - **Format**: `YYYY-MM-DD-project-name.md`
 - **Template**: See `projects/project-template.md`
 - **Purpose**: Define project scope, goals, and track related features
+
+### 📁 web/
+Documentation for all web applications, including feature updates and change logs.
+
+- **Purpose**: Track web app features, changes, and evolution over time
+- **Change Logs**: Each feature should maintain a log of updates and modifications
+- **Examples**: Job board features, UI components, API endpoints
 
 ## Relationship Model
 

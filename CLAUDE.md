@@ -71,15 +71,13 @@ Exobrain/
 ├── config/
 │   └── user.md               # User name and personalization settings
 ├── docs/                     # Documentation system
-│   ├── features/             # Feature requests with mermaid diagrams
-│   └── projects/             # Project docs with architecture diagrams
 ├── downloads/                # Downloaded content (gitignored)
 │   ├── articles/             # Web articles (PDF + Markdown)
 │   ├── books/                # Book files
 │   ├── papers/               # Research papers
 │   └── transcripts/          # Video/audio transcripts
 ├── examples/                 # Templates for personal content
-├── plans/                    # Implementation plans
+├── plans/                    # Plans: implementation, features, projects
 ├── public/                   # Web-facing content
 │   ├── cheatsheets/          # Public reference materials
 │   └── prompt-templates/     # Shared prompt templates
@@ -170,25 +168,30 @@ Skills in `.claude/skills/` extend Claude's capabilities:
 
 **Default behavior:** All new skills go in the public `.claude/skills/` directory unless they contain personal data or are highly specific to an individual's workflow. Claude will only ask about adding to personal if the skill seems private.
 
-### Documentation System
+### Plans System
 
-The `docs/` directory provides structured documentation with visual aids:
+The `plans/` directory contains all planning and documentation:
 
-**Features** (`docs/features/`)
-- Individual feature requests linked to parent projects
+**Implementation Plans**
+- Step-by-step execution plans with checkpoints
+- Safety features and rollback strategies
+- Success criteria for each phase
+
+**Feature Requests**
+- Individual feature proposals linked to parent projects
 - Template includes mermaid diagrams for:
   - User journey flowcharts
   - System component diagrams
   - State transition diagrams
 
-**Projects** (`docs/projects/`)
+**Projects**
 - High-level project documentation containing multiple features
 - Template includes mermaid diagrams for:
   - Feature dependency graphs
   - System architecture diagrams
   - Risk assessment matrices
 
-Templates include example diagrams that can be customized or removed based on needs.
+All planning documents are in `/plans/` with templates for consistent structure.
 
 ## Personal Content
 

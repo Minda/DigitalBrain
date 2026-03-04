@@ -16,7 +16,7 @@ This skill provides tools and workflows for:
 - Gmail MCP server configured in `app/mcp/gmail/`
 - Python environment with Gmail API libraries
 - OAuth credentials and token for Gmail API access
-- Project and feature documentation in `docs/`
+- Project and feature documentation in `plans/`
 
 ## Core Workflows
 
@@ -188,8 +188,8 @@ mark_message_read(msg_id)
 ### Scripts
 - `src/python/gmail_bulk_operations.py` - Bulk archive/trash/mark-read by query (CLI)
 - `src/python/list_gmail_labels.py` - Display all labels organized by type
-- `docs/features/2026-02-15-delete-old-gmail-labels.md` - Deletion plan with keep/delete lists
-- `docs/projects/2026-02-15-email-management.md` - Overall email management project
+- `plans/2026-02-15-delete-old-gmail-labels.md` - Deletion plan with keep/delete lists
+- `plans/2026-02-15-email-management.md` - Overall email management project
 
 ### MCP Server
 - `app/mcp/gmail/mcp_gmail/server.py` - MCP tools (`batch_archive_messages` + label ops)
@@ -198,7 +198,7 @@ mark_message_read(msg_id)
 ### Data Storage
 All email data should be in `personal/` (private repository):
 - `personal/data/email-classifier/` - Classification databases
-- Project/feature docs can be in public `docs/` (no personal data)
+- Project/feature docs can be in public `plans/` (no personal data)
 
 ## Common Workflows
 
@@ -210,7 +210,7 @@ python /tmp/list_gmail_labels.py > labels_audit.txt
 ```
 
 **Step 2**: Create deletion plan
-- Document in `docs/features/YYYY-MM-DD-delete-old-gmail-labels.md`
+- Document in `plans/YYYY-MM-DD-delete-old-gmail-labels.md`
 - List labels to keep (~80 active labels)
 - List labels to delete (~100 obsolete labels)
 

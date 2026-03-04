@@ -4,11 +4,11 @@ import { resolve } from "path";
 
 const JOBS_MCP_DIR = resolve(process.cwd(), "../../app/mcp/jobs");
 
-function runScraper(source: "hn" | "80k"): Promise<Record<string, unknown>> {
+function run80kScraper(): Promise<Record<string, unknown>> {
   return new Promise((res, rej) => {
     const proc = spawn(
       "uv",
-      ["run", "python", "-m", "mcp_jobs.cli", "scrape", "--source", source, "--json"],
+      ["run", "python", "-m", "mcp_jobs.cli", "scrape", "--source", "80k", "--json"],
       { cwd: JOBS_MCP_DIR }
     );
 
@@ -27,28 +27,17 @@ function runScraper(source: "hn" | "80k"): Promise<Record<string, unknown>> {
   });
 }
 
-export async function POST(request: Request) {
-  const body = await request.json().catch(() => ({}));
-  const { source } = body as { source?: string };
-
-  if (!source || !["hn", "80k"].includes(source)) {
-    return NextResponse.json(
-      { success: false, error: 'source must be "hn" or "80k"' },
-      { status: 400 }
-    );
-  }
-
+export async function POST() {
   try {
-    const result = await runScraper(source as "hn" | "80k");
+    const result = await run80kScraper();
     return NextResponse.json({
       success: true,
       jobsNew: result.jobs_new,
       jobsFound: result.jobs_found,
       jobsSkipped: result.jobs_skipped,
-      threadTitle: result.thread_title ?? null,
     });
   } catch (error) {
-    console.error(`${source} scrape failed:`, error);
+    console.error("80k scrape failed:", error);
     return NextResponse.json(
       { success: false, error: error instanceof Error ? error.message : "Unknown error" },
       { status: 500 }

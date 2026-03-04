@@ -25,21 +25,21 @@ const ClassificationSchema = z.object({
     .number()
     .int()
     .describe(
-      "Relevance to user profile (1-5): 1=poor match, 2=weak, 3=moderate, 4=good, 5=strong"
+      "Relevance to user profile (1-3): 1=perfect match, 2=good match, 3=distant match"
     ),
   breakdown: z.object({
     roleMatch: z
       .number()
       .int()
-      .describe("How well the role matches target roles (1-5)"),
+      .describe("How well the role matches target roles (1-3): 1=great, 2=ok, 3=poor"),
     techMatch: z
       .number()
       .int()
-      .describe("How well tech stack matches interests (1-5)"),
+      .describe("How well tech stack matches interests (1-3): 1=great, 2=ok, 3=poor"),
     locationFit: z
       .number()
       .int()
-      .describe("How well location matches preferences (1-5)"),
+      .describe("How well location matches preferences (1-3): 1=great, 2=ok, 3=poor"),
     dealbreakers: z
       .boolean()
       .describe("True if any dealbreakers are present"),
@@ -158,12 +158,12 @@ async function classifySingleJob(
   const { object, usage } = await generateObject({
     model: anthropic(MODEL_ID),
     schema: ClassificationSchema,
-    system: `You are a job relevance classifier. Given a user's job preferences and a job posting, classify the job on a 1-5 relevance scale.
+    system: `You are a job relevance classifier. Given a user's job preferences and a job posting, classify the job on a 1-3 relevance scale.
 
 User Profile:
 ${profile}
 ${fewShotBlock}
-Rate the job based on how well it matches the user's preferences. Be calibrated: most jobs should be 2-3, only exceptional matches should be 5.`,
+Rate the job based on how well it matches the user's preferences: 1=perfect match (meets most criteria), 2=good match (meets some criteria, worth reviewing), 3=distant match (tangentially related).`,
     prompt: `Company: ${job.company}
 Title: ${job.title ?? "Not specified"}
 Location: ${job.location ?? "Not specified"}
@@ -172,15 +172,15 @@ Description:
 ${job.description}`,
   });
 
-  // Clamp values to 1-5 range (in case model ignores instructions)
+  // Clamp values to 1-3 range (in case model ignores instructions)
   const clampedResult = {
     ...object,
-    relevance: Math.max(1, Math.min(5, object.relevance)),
+    relevance: Math.max(1, Math.min(3, object.relevance)),
     breakdown: {
       ...object.breakdown,
-      roleMatch: Math.max(1, Math.min(5, object.breakdown.roleMatch)),
-      techMatch: Math.max(1, Math.min(5, object.breakdown.techMatch)),
-      locationFit: Math.max(1, Math.min(5, object.breakdown.locationFit)),
+      roleMatch: Math.max(1, Math.min(3, object.breakdown.roleMatch)),
+      techMatch: Math.max(1, Math.min(3, object.breakdown.techMatch)),
+      locationFit: Math.max(1, Math.min(3, object.breakdown.locationFit)),
     },
   };
 

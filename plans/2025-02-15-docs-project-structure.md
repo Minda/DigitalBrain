@@ -1,7 +1,7 @@
 ## Feature Request
 
 **Feature Name**: Documentation Project Structure
-**Project**: [Documentation System](../projects/2025-02-15-documentation-system.md)
+**Project**: [Documentation System](2025-02-15-documentation-system.md)
 
 TODAY: Feb 15 2025
 
@@ -55,7 +55,7 @@ The new documentation structure should provide:
 
 **Related Docs**:
 
-- [Documentation System Project](../projects/2025-02-15-documentation-system.md)
+- [Documentation System Project](2025-02-15-documentation-system.md)
 
 **Database Changes**:
 

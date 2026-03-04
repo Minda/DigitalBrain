@@ -69,7 +69,7 @@ Create a comprehensive documentation system for the Exobrain project, establishi
 Features that are part of this project:
 
 - [x] Documentation Project Structure - Approved
-  - Link: `../features/2025-02-15-docs-project-structure.md`
+  - Link: `2025-02-15-docs-project-structure.md`
 
 ---
 

@@ -21,7 +21,7 @@ import type { Job } from "./kanban-card";
 // ---------------------------------------------------------------------------
 const STALE_DAYS = 5;
 
-type RelevanceLevel = 0 | 1 | 2 | 3 | 4 | 5;
+type RelevanceLevel = 0 | 1 | 2 | 3;
 
 // ---------------------------------------------------------------------------
 // Props
@@ -95,15 +95,15 @@ export function KanbanBoard({ initialJobs, lastScrape }: KanbanBoardProps) {
   // Computed buckets
   // -------------------------------------------------------------------------
   const { inboxByRelevance, viewedByRelevance, staleByRelevance, appliedByRelevance } = useMemo(() => {
-    const inbox: Record<number, Job[]> = { 5: [], 4: [], 3: [], 2: [], 1: [], 0: [] };
-    const viewed: Record<number, Job[]> = { 5: [], 4: [], 3: [], 2: [], 1: [], 0: [] };
-    const stale: Record<number, Job[]> = { 5: [], 4: [], 3: [], 2: [], 1: [], 0: [] };
-    const applied: Record<number, Job[]> = { 5: [], 4: [], 3: [], 2: [], 1: [], 0: [] };
+    const inbox: Record<number, Job[]> = { 1: [], 2: [], 3: [], 0: [] };
+    const viewed: Record<number, Job[]> = { 1: [], 2: [], 3: [], 0: [] };
+    const stale: Record<number, Job[]> = { 1: [], 2: [], 3: [], 0: [] };
+    const applied: Record<number, Job[]> = { 1: [], 2: [], 3: [], 0: [] };
 
     for (const job of jobs) {
       const stage = job.stage ?? "inbox";
       const rel = (job.relevance ?? 0) as number;
-      const bucket = rel >= 0 && rel <= 5 ? rel : 0;
+      const bucket = rel >= 0 && rel <= 3 ? rel : 0;
 
       if (stage === "viewed") {
         viewed[bucket].push(job);
@@ -304,7 +304,7 @@ export function KanbanBoard({ initialJobs, lastScrape }: KanbanBoardProps) {
   // Relevance change (from detail panel)
   // -------------------------------------------------------------------------
   const handleRelevanceChange = useCallback(
-    async (jobId: number, newRelevance: 0 | 1 | 2 | 3 | 4 | 5) => {
+    async (jobId: number, newRelevance: 0 | 1 | 2 | 3) => {
       const currentJob = jobs.find((j) => j.id === jobId);
       if (!currentJob) return;
       if (currentJob.relevance === newRelevance) return;
@@ -442,7 +442,7 @@ export function KanbanBoard({ initialJobs, lastScrape }: KanbanBoardProps) {
             className="flex-1 space-y-1 overflow-y-auto pr-0.5"
             style={{ maxHeight: "calc(100vh - 180px)" }}
           >
-            {([5, 4, 3, 2, 1, 0] as RelevanceLevel[]).map((level) => (
+            {([1, 2, 3, 0] as RelevanceLevel[]).map((level) => (
               <RelevanceSection
                 key={level}
                 level={level}
@@ -466,7 +466,7 @@ export function KanbanBoard({ initialJobs, lastScrape }: KanbanBoardProps) {
             className="flex-1 space-y-1 overflow-y-auto pr-0.5"
             style={{ maxHeight: "calc(100vh - 180px)" }}
           >
-            {([5, 4, 3, 2, 1, 0] as RelevanceLevel[]).map((level) => (
+            {([1, 2, 3, 0] as RelevanceLevel[]).map((level) => (
               <RelevanceSection
                 key={level}
                 level={level}
@@ -491,7 +491,7 @@ export function KanbanBoard({ initialJobs, lastScrape }: KanbanBoardProps) {
             className="flex-1 space-y-1 overflow-y-auto pr-0.5"
             style={{ maxHeight: "calc(100vh - 180px)" }}
           >
-            {([5, 4, 3, 2, 1, 0] as RelevanceLevel[]).map((level) => (
+            {([1, 2, 3, 0] as RelevanceLevel[]).map((level) => (
               <RelevanceSection
                 key={level}
                 level={level}
@@ -516,7 +516,7 @@ export function KanbanBoard({ initialJobs, lastScrape }: KanbanBoardProps) {
             className="flex-1 space-y-1 overflow-y-auto pr-0.5"
             style={{ maxHeight: "calc(100vh - 180px)" }}
           >
-            {([5, 4, 3, 2, 1, 0] as RelevanceLevel[]).map((level) => (
+            {([1, 2, 3, 0] as RelevanceLevel[]).map((level) => (
               <RelevanceSection
                 key={level}
                 level={level}

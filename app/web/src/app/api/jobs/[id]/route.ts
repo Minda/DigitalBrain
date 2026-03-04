@@ -35,10 +35,10 @@ export async function PATCH(
 
     if (
       relevance !== undefined &&
-      (!Number.isInteger(relevance) || relevance < 0 || relevance > 5)
+      (!Number.isInteger(relevance) || relevance < 0 || relevance > 3)
     ) {
       return NextResponse.json(
-        { success: false, error: "Relevance must be an integer from 0 to 5" },
+        { success: false, error: "Relevance must be an integer from 0 to 3" },
         { status: 400 }
       );
     }

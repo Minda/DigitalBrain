@@ -107,9 +107,9 @@ Write("/plans/[project-name].md", plan_content)
 
 ### 8. Create Documentation (if needed)
 
-For features and projects, also create documentation in `/docs/`:
-- **Features**: `/docs/features/YYYY-MM-DD-feature-name.md`
-- **Projects**: `/docs/projects/YYYY-MM-DD-project-name.md`
+For features and projects, also create documentation in `/plans/`:
+- **Features**: `/plans/YYYY-MM-DD-feature-name.md`
+- **Projects**: `/plans/YYYY-MM-DD-project-name.md`
 
 See `documentation-diagrams.md` for guidance on filling out mermaid diagrams.
 
@@ -119,12 +119,12 @@ See `documentation-diagrams.md` for guidance on filling out mermaid diagrams.
 
 1. **Copy the template**:
    ```python
-   Read("/docs/projects/project-template.md")
+   Read("/plans/project-template.md")
    ```
 
 2. **Create new file with date prefix**:
    ```python
-   Write("/docs/projects/YYYY-MM-DD-project-name.md", content)
+   Write("/plans/YYYY-MM-DD-project-name.md", content)
    ```
 
 3. **Fill out all sections**:
@@ -136,9 +136,9 @@ See `documentation-diagrams.md` for guidance on filling out mermaid diagrams.
    - Milestones and timeline
    - Risk assessment with matrix
 
-4. **Update the projects index**:
+4. **Update the plans index**:
    ```python
-   Edit("/docs/projects/README.md")
+   Edit("/plans/README.md")
    # Add to appropriate category and status section
    ```
 
@@ -148,17 +148,17 @@ See `documentation-diagrams.md` for guidance on filling out mermaid diagrams.
 
 1. **Copy the template**:
    ```python
-   Read("/docs/features/feature-request-template.md")
+   Read("/plans/feature-request-template.md")
    ```
 
 2. **Create new file with date prefix**:
    ```python
-   Write("/docs/features/YYYY-MM-DD-feature-name.md", content)
+   Write("/plans/YYYY-MM-DD-feature-name.md", content)
    ```
 
 3. **Link to parent project** (REQUIRED):
    ```markdown
-   **Project**: [Project Name](../projects/YYYY-MM-DD-project-name.md)
+   **Project**: [Project Name](YYYY-MM-DD-project-name.md)
    ```
 
 4. **Fill out all sections**:
@@ -168,15 +168,15 @@ See `documentation-diagrams.md` for guidance on filling out mermaid diagrams.
    - Requirements and nice-to-haves
    - Open questions
 
-5. **Update the features index**:
+5. **Update the plans index**:
    ```python
-   Edit("/docs/features/README.md")
+   Edit("/plans/README.md")
    # Add under parent project section
    ```
 
 6. **Update parent project's feature list**:
    ```python
-   Edit("/docs/projects/YYYY-MM-DD-project-name.md")
+   Edit("/plans/YYYY-MM-DD-project-name.md")
    # Add to "Related Features" section
    ```
 
@@ -197,7 +197,7 @@ See `documentation-diagrams.md` for guidance on filling out mermaid diagrams.
 
 **Every feature MUST**:
 - Reference its parent project in the header
-- Include project link in format: `[Project Name](../projects/YYYY-MM-DD-name.md)`
+- Include project link in format: `[Project Name](YYYY-MM-DD-name.md)`
 
 **Every project SHOULD**:
 - List all child features in "Related Features" section
@@ -207,23 +207,23 @@ See `documentation-diagrams.md` for guidance on filling out mermaid diagrams.
 **Bidirectional linking**:
 ```markdown
 # In feature file:
-**Project**: [Documentation System](../projects/2025-02-15-documentation-system.md)
+**Project**: [Documentation System](2025-02-15-documentation-system.md)
 
 # In project file:
 - [x] Documentation Structure - Complete
-  - Link: `../features/2025-02-15-docs-project-structure.md`
+  - Link: `2025-02-15-docs-project-structure.md`
 ```
 
 ### Quick Status Check
 
 To see all features for a project:
 ```python
-Grep("project-name", "/docs/features/", output_mode="files_with_matches")
+Grep("project-name", "/plans/", output_mode="files_with_matches")
 ```
 
 To check feature status:
 ```python
-Grep("Status:", "/docs/features/YYYY-MM-DD-*.md", output_mode="content")
+Grep("Status:", "/plans/YYYY-MM-DD-*.md", output_mode="content")
 ```
 
 ## Example Plans

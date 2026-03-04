@@ -6,7 +6,7 @@ import { useEffect, useRef, useState } from "react";
 // Types — local to this client component (no server imports)
 // ---------------------------------------------------------------------------
 type Stage = "inbox" | "viewed" | "applied" | "dismissed";
-type RelevanceLevel = 0 | 1 | 2 | 3 | 4 | 5;
+type RelevanceLevel = 0 | 1 | 2 | 3;
 
 export interface JobDetailPanelProps {
   job: {
@@ -186,30 +186,43 @@ export function JobDetailPanel({
             <p className="mt-2 text-sm font-medium text-green-700">{salary}</p>
           )}
 
-          {/* Relevance stars */}
+          {/* Relevance buttons */}
           <div className="mt-5">
             <p className="mb-1.5 text-xs font-medium uppercase tracking-wide text-zinc-400">
               Relevance
             </p>
-            <div className="flex gap-1">
-              {([1, 2, 3, 4, 5] as RelevanceLevel[]).map((level) => (
-                <button
-                  key={level}
-                  onClick={() => onRelevanceChange(job.id, level)}
-                  className="text-xl transition-colors"
-                  aria-label={`Set relevance to ${level}`}
-                >
-                  {level <= currentRelevance ? (
-                    <span className="text-amber-400">&#9733;</span>
-                  ) : (
-                    <span className="text-zinc-200 hover:text-amber-200">&#9733;</span>
-                  )}
-                </button>
-              ))}
+            <div className="flex gap-2">
+              {([1, 2, 3] as RelevanceLevel[]).map((level) => {
+                const labels: Record<number, string> = {
+                  1: "Perfect",
+                  2: "Good",
+                  3: "Distant",
+                };
+                const activeColors: Record<number, string> = {
+                  1: "bg-emerald-500 text-white",
+                  2: "bg-blue-500 text-white",
+                  3: "bg-amber-500 text-white",
+                };
+                const isActive = currentRelevance === level;
+                return (
+                  <button
+                    key={level}
+                    onClick={() => onRelevanceChange(job.id, level)}
+                    className={`rounded-md px-3 py-1 text-sm font-medium transition-colors ${
+                      isActive
+                        ? activeColors[level]
+                        : "bg-zinc-100 text-zinc-600 hover:bg-zinc-200"
+                    }`}
+                    aria-label={`Set relevance to ${labels[level]}`}
+                  >
+                    {labels[level]}
+                  </button>
+                );
+              })}
               {currentRelevance > 0 && (
                 <button
                   onClick={() => onRelevanceChange(job.id, 0)}
-                  className="ml-2 text-xs text-zinc-400 hover:text-zinc-600 transition-colors"
+                  className="ml-1 text-xs text-zinc-400 hover:text-zinc-600 transition-colors"
                   aria-label="Clear relevance"
                 >
                   Clear
@@ -271,15 +284,15 @@ export function JobDetailPanel({
                     <div className="mt-2 rounded-md bg-zinc-50 px-3 py-2.5 text-xs text-zinc-600 space-y-1.5">
                       <div className="flex justify-between">
                         <span>Role match</span>
-                        <span className="font-medium">{bd.roleMatch ?? "—"}/5</span>
+                        <span className="font-medium">{bd.roleMatch ?? "—"}/3</span>
                       </div>
                       <div className="flex justify-between">
                         <span>Tech match</span>
-                        <span className="font-medium">{bd.techMatch ?? "—"}/5</span>
+                        <span className="font-medium">{bd.techMatch ?? "—"}/3</span>
                       </div>
                       <div className="flex justify-between">
                         <span>Location fit</span>
-                        <span className="font-medium">{bd.locationFit ?? "—"}/5</span>
+                        <span className="font-medium">{bd.locationFit ?? "—"}/3</span>
                       </div>
                       {bd.dealbreakers && (
                         <div className="text-red-600 font-medium">Dealbreaker detected</div>
