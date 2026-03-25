@@ -1,5 +1,9 @@
-import { generateObject } from "ai";
+import * as ai from "ai";
+import { wrapAISDK } from "langsmith/experimental/vercel";
+import { awaitAllCallbacks } from "langsmith/callbacks";
 import { anthropic } from "@ai-sdk/anthropic";
+
+const { generateObject } = wrapAISDK(ai);
 import { z } from "zod";
 import { db } from "@/modules/jobs/db";
 import { jobs, events, classificationRuns } from "@/modules/jobs/schema";
@@ -11,7 +15,6 @@ import path from "path";
 // Config
 // ---------------------------------------------------------------------------
 const MODEL_ID = "claude-haiku-4-5-20251001";
-const CONCURRENCY = 10;
 const PROFILE_PATH = path.resolve(process.cwd(), "../../config/job-profile.md");
 
 // ---------------------------------------------------------------------------
@@ -50,6 +53,38 @@ const ClassificationSchema = z.object({
 });
 
 type ClassificationResult = z.infer<typeof ClassificationSchema>;
+
+// Batch classification schema
+// Note: Using z.number() instead of z.number().int() because Anthropic API
+// doesn't support min/max constraints on integers in JSON schema
+const BatchClassificationSchema = z.object({
+  classifications: z
+    .array(
+      z.object({
+        jobId: z.number().describe("The database ID of the job being classified"),
+        summary: z.string().describe("2-3 sentence summary of the job posting"),
+        relevance: z
+          .number()
+          .describe("Relevance to user profile (1-3): 1=perfect match, 2=good match, 3=distant match"),
+        breakdown: z.object({
+          roleMatch: z
+            .number()
+            .describe("How well the role matches target roles (1-3): 1=great, 2=ok, 3=poor"),
+          techMatch: z
+            .number()
+            .describe("How well tech stack matches interests (1-3): 1=great, 2=ok, 3=poor"),
+          locationFit: z
+            .number()
+            .describe("How well location matches preferences (1-3): 1=great, 2=ok, 3=poor"),
+          dealbreakers: z.boolean().describe("True if any dealbreakers are present"),
+          reasoning: z.string().describe("1-2 sentence explanation of the score"),
+        }),
+      })
+    )
+    .describe("Array of classifications, one for each job in the batch"),
+});
+
+type BatchClassificationResult = z.infer<typeof BatchClassificationSchema>;
 
 // ---------------------------------------------------------------------------
 // Helpers
@@ -139,7 +174,7 @@ function buildFewShotBlock(examples: FewShotExample[]): string {
 }
 
 // ---------------------------------------------------------------------------
-// Single job classification
+// Batch job classification
 // ---------------------------------------------------------------------------
 
 interface JobToClassify {
@@ -150,43 +185,59 @@ interface JobToClassify {
   description: string;
 }
 
-async function classifySingleJob(
-  job: JobToClassify,
+async function classifyBatchJobs(
+  jobs: JobToClassify[],
   profile: string,
   fewShotBlock: string
-): Promise<{ jobId: number; result: ClassificationResult; usage: { input: number; output: number } }> {
-  const { object, usage } = await generateObject({
-    model: anthropic(MODEL_ID),
-    schema: ClassificationSchema,
-    system: `You are a job relevance classifier. Given a user's job preferences and a job posting, classify the job on a 1-3 relevance scale.
-
-User Profile:
-${profile}
-${fewShotBlock}
-Rate the job based on how well it matches the user's preferences: 1=perfect match (meets most criteria), 2=good match (meets some criteria, worth reviewing), 3=distant match (tangentially related).`,
-    prompt: `Company: ${job.company}
+): Promise<{
+  results: Array<{ jobId: number; result: ClassificationResult }>;
+  usage: { input: number; output: number }
+}> {
+  // Build prompt with all jobs
+  const jobsPrompt = jobs
+    .map((job, idx) => {
+      return `Job ${idx + 1} (ID: ${job.id}):
+Company: ${job.company}
 Title: ${job.title ?? "Not specified"}
 Location: ${job.location ?? "Not specified"}
 
 Description:
-${job.description}`,
+${job.description}`;
+    })
+    .join("\n\n---\n\n");
+
+  const { object, usage } = await generateObject({
+    model: anthropic(MODEL_ID),
+    schema: BatchClassificationSchema,
+    system: `You are a job relevance classifier. Given a user's job preferences and multiple job postings, classify each job on a 1-3 relevance scale.
+
+User Profile:
+${profile}
+${fewShotBlock}
+Rate each job based on how well it matches the user's preferences: 1=perfect match (meets most criteria), 2=good match (meets some criteria, worth reviewing), 3=distant match (tangentially related).
+
+IMPORTANT: Return classifications for ALL jobs in the batch, using the exact job ID provided for each one.`,
+    prompt: `Please classify the following ${jobs.length} job posting(s):\n\n${jobsPrompt}`,
   });
 
-  // Clamp values to 1-3 range (in case model ignores instructions)
-  const clampedResult = {
-    ...object,
-    relevance: Math.max(1, Math.min(3, object.relevance)),
-    breakdown: {
-      ...object.breakdown,
-      roleMatch: Math.max(1, Math.min(3, object.breakdown.roleMatch)),
-      techMatch: Math.max(1, Math.min(3, object.breakdown.techMatch)),
-      locationFit: Math.max(1, Math.min(3, object.breakdown.locationFit)),
+  // Clamp values to 1-3 range and map to results
+  const results = object.classifications.map((classification) => ({
+    jobId: classification.jobId,
+    result: {
+      summary: classification.summary,
+      relevance: Math.max(1, Math.min(3, classification.relevance)),
+      breakdown: {
+        roleMatch: Math.max(1, Math.min(3, classification.breakdown.roleMatch)),
+        techMatch: Math.max(1, Math.min(3, classification.breakdown.techMatch)),
+        locationFit: Math.max(1, Math.min(3, classification.breakdown.locationFit)),
+        dealbreakers: classification.breakdown.dealbreakers,
+        reasoning: classification.breakdown.reasoning,
+      },
     },
-  };
+  }));
 
   return {
-    jobId: job.id,
-    result: clampedResult,
+    results,
     usage: {
       input: usage.inputTokens ?? 0,
       output: usage.outputTokens ?? 0,
@@ -274,38 +325,30 @@ export async function classifyJobs(
   let classified = 0;
 
   try {
-    // Process in concurrent batches
-    for (let i = 0; i < jobsToClassify.length; i += CONCURRENCY) {
-      const batch = jobsToClassify.slice(i, i + CONCURRENCY);
+    // Classify all jobs in a single batch
+    const { results, usage } = await classifyBatchJobs(
+      jobsToClassify,
+      profile,
+      fewShotBlock
+    );
 
-      const results = await Promise.allSettled(
-        batch.map((job) => classifySingleJob(job, profile, fewShotBlock))
-      );
+    totalInput = usage.input;
+    totalOutput = usage.output;
 
-      for (const result of results) {
-        if (result.status === "rejected") {
-          console.error("Classification failed for job:", result.reason);
-          continue;
-        }
+    // Update each job in the database
+    for (const { jobId, result: classification } of results) {
+      await db
+        .update(jobs)
+        .set({
+          relevance: classification.relevance,
+          score: classification.relevance, // use relevance as score for now
+          scoreBreakdown: JSON.stringify(classification.breakdown),
+          summary: classification.summary,
+          updatedAt: new Date().toISOString(),
+        })
+        .where(eq(jobs.id, jobId));
 
-        const { jobId, result: classification, usage } = result.value;
-        totalInput += usage.input;
-        totalOutput += usage.output;
-
-        // Update the job record
-        await db
-          .update(jobs)
-          .set({
-            relevance: classification.relevance,
-            score: classification.relevance, // use relevance as score for now
-            scoreBreakdown: JSON.stringify(classification.breakdown),
-            summary: classification.summary,
-            updatedAt: new Date().toISOString(),
-          })
-          .where(eq(jobs.id, jobId));
-
-        classified++;
-      }
+      classified++;
     }
 
     // Update run record
@@ -334,6 +377,8 @@ export async function classifyJobs(
       .where(eq(classificationRuns.id, run.id));
     throw error;
   }
+
+  await awaitAllCallbacks();
 
   return {
     runId: run.id,

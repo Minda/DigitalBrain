@@ -9,6 +9,7 @@ NOTE: CSS selectors below are based on 80k's current markup and may need adjustm
       if the site redesigns. Run with headless=False the first time to verify them.
 """
 
+import sys
 from pathlib import Path
 from typing import Optional
 
@@ -56,8 +57,18 @@ def parse_job_cards(cards_data: list[dict]) -> list[dict]:
     jobs = []
     for card in cards_data:
         company = (card.get("company") or "").strip()
+        title = (card.get("title") or "").strip()
         url = (card.get("url") or "").strip()
         description = (card.get("description") or "").strip()
+
+        # If company/title missing, try extracting from description (80k format: title\n\ncompany\n...)
+        if description and (not company or not title):
+            lines = [line.strip() for line in description.split("\n") if line.strip()]
+            if len(lines) >= 2:
+                if not title:
+                    title = lines[0]
+                if not company:
+                    company = lines[1]
 
         if not company or not url or not description:
             continue
@@ -65,7 +76,7 @@ def parse_job_cards(cards_data: list[dict]) -> list[dict]:
         jobs.append({
             "url": url,
             "company": company,
-            "title": (card.get("title") or "").strip() or None,
+            "title": title or None,
             "location": (card.get("location") or "").strip() or None,
             "description": description,
             "posted_at": card.get("posted_at"),
@@ -90,12 +101,12 @@ async def _make_context(playwright, headless: bool) -> BrowserContext:
     ua = "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36"
 
     if AUTH_FILE.exists():
-        print(f"Loading 80k session from {AUTH_FILE}")
+        sys.stderr.write(f"Loading 80k session from {AUTH_FILE}\n")
         context = await browser.new_context(
             storage_state=str(AUTH_FILE), viewport=viewport, user_agent=ua
         )
     else:
-        print("No saved 80k session — creating fresh context")
+        sys.stderr.write("No saved 80k session — creating fresh context\n")
         AUTH_FILE.parent.mkdir(parents=True, exist_ok=True)
         context = await browser.new_context(viewport=viewport, user_agent=ua)
 
@@ -152,7 +163,7 @@ async def fetch_job_board(headless: bool = True) -> list[dict]:
                     description = await desc_el.inner_text() if desc_el else await detail_page.inner_text("body")
                     await detail_page.close()
                 except Exception as e:
-                    print(f"Could not fetch detail page {href}: {e}")
+                    sys.stderr.write(f"Could not fetch detail page {href}: {e}\n")
 
             cards_data.append({
                 "url": href,

@@ -3,7 +3,7 @@ import { db } from "@/modules/jobs/db";
 import { jobs, events } from "@/modules/jobs/schema";
 import { eq } from "drizzle-orm";
 
-const VALID_STAGES = ["inbox", "viewed", "applied", "dismissed"] as const;
+const VALID_STAGES = ["inbox", "viewed", "interested", "applied", "dismissed"] as const;
 
 export async function PATCH(
   request: Request,

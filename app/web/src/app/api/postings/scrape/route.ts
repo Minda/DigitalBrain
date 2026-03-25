@@ -4,7 +4,7 @@ import { resolve } from "path";
 
 const JOBS_MCP_DIR = resolve(process.cwd(), "../../app/mcp/jobs");
 
-function runScraper(source: "hn" | "80k"): Promise<Record<string, unknown>> {
+function runScraper(source: "hn" | "80k" | "wellfound" | "stanford"): Promise<Record<string, unknown>> {
   return new Promise((res, rej) => {
     const proc = spawn(
       "uv",
@@ -31,15 +31,15 @@ export async function POST(request: Request) {
   const body = await request.json().catch(() => ({}));
   const { source } = body as { source?: string };
 
-  if (!source || !["hn", "80k"].includes(source)) {
+  if (!source || !["hn", "80k", "wellfound", "stanford"].includes(source)) {
     return NextResponse.json(
-      { success: false, error: 'source must be "hn" or "80k"' },
+      { success: false, error: 'source must be "hn", "80k", "wellfound", or "stanford"' },
       { status: 400 }
     );
   }
 
   try {
-    const result = await runScraper(source as "hn" | "80k");
+    const result = await runScraper(source as "hn" | "80k" | "wellfound" | "stanford");
     return NextResponse.json({
       success: true,
       jobsNew: result.jobs_new,

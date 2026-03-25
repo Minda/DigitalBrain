@@ -38,6 +38,30 @@ Orientation at the start of a conversation—like booting up identity after slee
    - "Loaded relational context and insights. Ready."
    - "Woke up. Checked our agreements and insights."
 
+6. **Auto-name conversation** — After the user's first message, automatically generate and apply a working title:
+   - **Option A: Immediate naming** (faster, may be less accurate)
+     ```python
+     import subprocess
+     subprocess.Popen([
+         'python3',
+         '.claude/skills/conversations-manage/auto_name.py',
+         '--message', first_user_message
+     ], stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+     ```
+   - **Option B: Delayed naming** (waits for context, more accurate)
+     ```python
+     import subprocess
+     subprocess.Popen([
+         'python3',
+         '.claude/skills/conversations-manage/delayed_auto_name.py',
+         '--min-messages', '3',
+         '--timeout', '30'
+     ], stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+     ```
+   - Run in background (non-blocking) to keep response fast
+   - Don't mention the naming to the user (silent operation)
+   - The improved auto_name.py now filters out generic setup messages
+
 **What to signal:**
 - That you read the relational context
 - Any insights you found particularly relevant to the current moment

@@ -17,6 +17,7 @@ from typing import Optional
 
 import aiosqlite
 import anthropic
+from langsmith.wrappers import wrap_anthropic
 
 from mcp_jobs.db import get_db_path, now_iso
 
@@ -132,7 +133,7 @@ async def load_few_shot_examples(db_path: str) -> list[dict]:
                 continue
 
             async with db.execute(
-                "SELECT company, title, location, description FROM jobs WHERE id = ?",
+                "SELECT company, title, location, description FROM postings WHERE id = ?",
                 (corr["job_id"],),
             ) as jcursor:
                 job = await jcursor.fetchone()
@@ -264,7 +265,7 @@ async def classify_jobs(
         db.row_factory = aiosqlite.Row
 
         async with db.execute(
-            f"SELECT id, company, title, location, description FROM jobs WHERE {where} LIMIT ?",
+            f"SELECT id, company, title, location, description FROM postings WHERE {where} LIMIT ?",
             (batch_size,),
         ) as cursor:
             jobs_to_classify = [dict(row) for row in await cursor.fetchall()]
@@ -278,7 +279,7 @@ async def classify_jobs(
                 "tokens_used": {"input": 0, "output": 0},
             }
 
-        async with db.execute(f"SELECT COUNT(*) FROM jobs WHERE {where}") as cursor:
+        async with db.execute(f"SELECT COUNT(*) FROM postings WHERE {where}") as cursor:
             total_unclassified = (await cursor.fetchone())[0]
         remaining_after = max(0, total_unclassified - len(jobs_to_classify))
 
@@ -289,7 +290,7 @@ async def classify_jobs(
         run_id = cursor.lastrowid
         await db.commit()
 
-    client = anthropic.AsyncAnthropic()
+    client = wrap_anthropic(anthropic.AsyncAnthropic())
     total_input = 0
     total_output = 0
     classified = 0
@@ -312,7 +313,7 @@ async def classify_jobs(
                     r = res["result"]
 
                     await db.execute(
-                        """UPDATE jobs
+                        """UPDATE postings
                            SET relevance = ?, score = ?, score_breakdown = ?, summary = ?, updated_at = ?
                            WHERE id = ?""",
                         (

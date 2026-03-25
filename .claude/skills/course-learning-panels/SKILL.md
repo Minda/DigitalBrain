@@ -245,3 +245,13 @@ panel_discussions/
 | Agent times out | Check output file for partial results, relaunch if needed |
 | Too many documents (>25) | Batch into groups, launch in waves |
 | User wants different personas | Reconfigure and relaunch affected panels only |
+
+## Integration with Course Skills
+
+This skill is a core component of the course processing workflow:
+
+- **courses skill:** Provides the general workflow where panel discussions fit
+- **bluedot-courses skill:** Contains specific BlueDot course materials to process
+- **Standard workflow:** Download materials → Organize → **Panel Discussion** → Synthesis → Notion notes
+
+Use within the courses workflow at the "Deep Dive" step for comprehensive analysis of course materials.

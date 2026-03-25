@@ -1,6 +1,6 @@
 ---
 name: skill-creator
-description: Expert guide for creating, writing, and refining Claude Code skills. Use this when the user wants to create a new skill, update an existing skill, or learn about skill structure and best practices.
+description: Expert guide for creating and writing Claude Code skills. Use this when the user wants to create a new skill or learn about skill structure and best practices.
 allowed-tools: [Read, Write, Edit, Bash, Glob, Grep]
 ---
 
@@ -10,7 +10,7 @@ A comprehensive guide for creating effective Claude Code skills that extend Clau
 
 ## Quick Start
 
-Creating a skill involves seven steps:
+Creating a skill involves six steps:
 
 1. **Check existing skills** — Review 126+ indexed skills before creating new ones
 2. **Understand the use case** — Clarify what the skill does and when it triggers
@@ -18,14 +18,15 @@ Creating a skill involves seven steps:
 4. **Initialize the skill** — Use `init_skill.py` or create manually
 5. **Write the SKILL.md** — Clear instructions using best practices
 6. **Package the skill** — Validate and bundle for distribution (optional)
-7. **Iterate and refine** — Test in real conversations and improve
+
+**After creation:** Use `/skill-optimization` to test, refine, and optimize your skill.
 
 ## When to Use
 
 - Creating a new skill from scratch
-- Improving or refining an existing skill
 - Learning skill structure and best practices
-- Packaging skills for distribution
+- Understanding skill conventions and patterns
+- Setting up initial skill structure
 
 ## When Not to Use
 
@@ -223,12 +224,16 @@ python .claude/skills/skill-creator/scripts/package_skill.py .claude/skills/<ski
 
 For web distribution via `.well-known/skills/`, see `references/agent-skills-discovery-rfc.md`.
 
-## Step 7: Iterate and Refine
+## Next Step: Optimization
 
-1. **Manual invocation**: `/skill-name` with various arguments
-2. **Automatic invocation**: Conversations where skill should trigger
-3. **Edge cases**: Missing information, errors, ambiguity
-4. **Refinement**: Update based on what works
+Once you've created your skill, use `/skill-optimization` to:
+- Test with realistic data
+- Identify and fix bottlenecks
+- Improve clarity and error handling
+- Add robustness for edge cases
+- Track optimization iterations
+
+The skill-optimization skill provides a systematic framework for testing, profiling, and iteratively improving your skill based on real usage.
 
 ## Anti-Patterns
 

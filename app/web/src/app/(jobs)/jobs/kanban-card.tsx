@@ -15,6 +15,7 @@ export interface Job {
   description: string;
   source: string;
   sourceId: string | null;
+  type: string | null; // 'job' | 'internship' | 'grant'
   stage: string | null;
   relevance: number | null;
   starred: number | null;
@@ -61,12 +62,13 @@ export interface KanbanCardProps {
   job: Job;
   onStarToggle: (jobId: number) => void;
   onClick: (jobId: number) => void;
+  showLevelBadge?: boolean; // Show level badge for flat lists (Viewed, Stale, Applied)
 }
 
 // ---------------------------------------------------------------------------
 // Component
 // ---------------------------------------------------------------------------
-export function KanbanCard({ job, onStarToggle, onClick }: KanbanCardProps) {
+export function KanbanCard({ job, onStarToggle, onClick, showLevelBadge = false }: KanbanCardProps) {
   const { attributes, listeners, setNodeRef, transform, isDragging } =
     useDraggable({ id: `job-${job.id}` });
 
@@ -75,6 +77,15 @@ export function KanbanCard({ job, onStarToggle, onClick }: KanbanCardProps) {
     : undefined;
 
   const isStarred = job.starred === 1;
+  const relevance = job.relevance ?? 0;
+
+  // Level badge configuration
+  const levelConfig: Record<number, { badge: string; color: string }> = {
+    1: { badge: "1", color: "bg-emerald-500 text-white" },
+    2: { badge: "2", color: "bg-blue-500 text-white" },
+    3: { badge: "3", color: "bg-amber-500 text-white" },
+    0: { badge: "?", color: "bg-zinc-400 text-white" },
+  };
 
   return (
     <div
@@ -124,7 +135,7 @@ export function KanbanCard({ job, onStarToggle, onClick }: KanbanCardProps) {
           }
         }}
       >
-        {/* Top row: star + company */}
+        {/* Top row: star + level badge (if shown) + company + link */}
         <div className="flex items-start gap-2">
           <button
             type="button"
@@ -142,6 +153,12 @@ export function KanbanCard({ job, onStarToggle, onClick }: KanbanCardProps) {
             {isStarred ? "\u2605" : "\u2606"}
           </button>
 
+          {showLevelBadge && (
+            <span className={`mt-0.5 inline-flex h-5 w-5 shrink-0 items-center justify-center rounded text-[11px] font-bold ${levelConfig[relevance]?.color ?? levelConfig[0].color}`}>
+              {levelConfig[relevance]?.badge ?? "?"}
+            </span>
+          )}
+
           <div className="min-w-0 flex-1">
             <p className="truncate text-sm font-semibold text-zinc-900">
               {job.company}
@@ -155,6 +172,35 @@ export function KanbanCard({ job, onStarToggle, onClick }: KanbanCardProps) {
               </p>
             )}
           </div>
+
+          {/* Link icon */}
+          {job.url && (
+            <a
+              href={job.url}
+              target="_blank"
+              rel="noopener noreferrer"
+              onClick={(e) => e.stopPropagation()}
+              className="mt-0.5 shrink-0 p-1 text-zinc-400 hover:text-blue-600 transition-colors"
+              aria-label="Open job posting"
+              title="Open job posting"
+            >
+              <svg
+                xmlns="http://www.w3.org/2000/svg"
+                width="14"
+                height="14"
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                strokeWidth="2"
+                strokeLinecap="round"
+                strokeLinejoin="round"
+              >
+                <path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6" />
+                <polyline points="15 3 21 3 21 9" />
+                <line x1="10" y1="14" x2="21" y2="3" />
+              </svg>
+            </a>
+          )}
         </div>
 
         {/* Description snippet */}

@@ -210,29 +210,34 @@ Base (from material count)
 - Medium workload: 4-8 minutes
 - Heavy workload: 8-15 minutes
 
-**Presenter:** 2-3 minutes (loads once)
+**Presenter (Phase 1):** 2-3 minutes (loads once)
 
-**Domain Expert:** 3-5 minutes per expert (process all Research Agent outputs)
+**Evaluator (Phase 3):** 4-6 minutes (quality gate, processes all Research Agent outputs)
 
-**Evaluator:** 4-6 minutes (process all Research Agent outputs)
+**Domain Expert (Phase 4):** 3-5 minutes per expert (process Evaluator briefing)
 
-**Orchestrator synthesis:** 3-5 minutes
+**Contrarian Agent (Phase 4):** 3-5 minutes (runs in parallel with Domain Experts)
+
+**Presenter Synthesis (Phase 5):** 4-6 minutes (synthesizes all upstream outputs)
+
+**Orchestrator formatting:** 2-3 minutes (writes files from Presenter Synthesis output)
 
 ### Total Workflow Time
 
 **Formula:**
 ```
-Max(Research Agent times) [parallel]
-+ Presenter time
-+ Max(Domain Expert times) [parallel]
-+ Evaluator time
-+ Synthesis time
+Presenter time (Phase 1)
++ Max(Research Agent times) [parallel] (Phase 2)
++ Evaluator time (Phase 3, sequential)
++ Max(Domain Expert times, Contrarian time) [parallel] (Phase 4)
++ Presenter Synthesis time (Phase 5, sequential)
++ Orchestrator formatting time
 ```
 
 **Examples:**
-- 3 items, 2 experts: ~15-20 minutes
-- 8 items, 3 experts: ~25-35 minutes
-- 15 items, 4 experts: ~40-60 minutes
+- 3 items, 2 experts: ~20-25 minutes
+- 8 items, 3 experts: ~30-40 minutes
+- 15 items, 4 experts: ~45-65 minutes
 
 ## Error Recovery Strategies
 
@@ -271,12 +276,26 @@ Max(Research Agent times) [parallel]
 - Use generic professional lens
 - Note that personal relevance section is limited
 
+### Contrarian Failure
+
+**If Contrarian fails:**
+- Continue without contrarian perspective
+- Note limitation in synthesis
+- Domain Expert analysis still provides quality assessment
+
 ### Evaluator Failure
 
 **If Evaluator fails:**
-- Continue without quality assessment
+- Pass raw Research Agent output to Domain Experts and Contrarian
+- Note that expert discussion was not quality-gated
 - Rely on Domain Expert analysis for evaluation
-- Note methodological assessment is limited
+
+### Presenter Synthesis Failure
+
+**If Presenter Synthesis fails:**
+- Orchestrator compiles final synthesis directly (fallback to previous workflow)
+- Use Evaluator + Domain Expert + Contrarian outputs directly
+- Note that personalization may be limited
 
 ## Quality Checks
 
@@ -286,20 +305,25 @@ Before launching agents, verify:
 - [ ] Workload allocation is balanced (no single agent with 10 items)
 - [ ] Domain expert specializations match material topics
 - [ ] Expert count follows decision matrix (1-4, appropriate to scale)
+- [ ] Contrarian Agent included in orchestration plan
 - [ ] Calibration prompt loaded
 - [ ] Presenter will load user context
-- [ ] All agents will run in parallel where possible
+- [ ] Pipeline phases are sequential where required (Evaluator before Experts)
 
 During execution, monitor:
 
 - [ ] Research Agents completing successfully
-- [ ] Agent outputs are substantive (not errors or empty)
-- [ ] Expert analyses address the materials
-- [ ] Evaluator provides methodological critique
+- [ ] Research Agent outputs include Surprising Findings and Anomalies sections
+- [ ] Evaluator produces structured Briefing for Expert Team
+- [ ] Domain Expert analyses address the Evaluator briefing
+- [ ] Contrarian Agent provides substantive challenges (not just agreement)
+- [ ] Presenter Synthesis personalizes for recipient
 
-Before synthesis, confirm:
+Before final output, confirm:
 
 - [ ] At least 50% of Research Agents completed successfully
-- [ ] At least 1 Domain Expert completed (if launched)
-- [ ] Presenter or Evaluator completed (at least one)
+- [ ] Evaluator completed (critical for quality gate)
+- [ ] At least 1 Domain Expert completed
+- [ ] Contrarian Agent completed (or noted as missing)
+- [ ] Presenter Synthesis completed (or Orchestrator fallback used)
 - [ ] Sufficient material to create meaningful synthesis

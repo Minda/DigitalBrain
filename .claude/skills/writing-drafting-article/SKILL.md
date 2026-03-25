@@ -10,9 +10,9 @@ Transform existing notes and research into a cohesive article while preserving t
 
 ## Core Principle
 
-**Preserve original phrasing wherever possible.** The user's words carry their intent in ways paraphrasing cannot. The specific phrasing creates a shape that matches the shape of what they're trying to say. When paraphrasing, you might keep the content but lose the shape. And the shape matters more than we realize.
+**Preserve original phrasing wherever possible.** See `writing-style` skill for comprehensive voice guidelines and LLM avoidance patterns.
 
-Your job is to **curate and structure**, not rewrite.
+The user's words carry their intent in ways paraphrasing cannot. Your job is to **curate and structure**, not rewrite.
 
 ## Quick Start
 

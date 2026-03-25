@@ -5,7 +5,7 @@ Personal settings for your Exobrain instance.
 ## Name
 
 ```
-name: [Your Name]
+name: Minda
 ```
 
 ## Personal Paths

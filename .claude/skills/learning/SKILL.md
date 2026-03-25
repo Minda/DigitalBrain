@@ -31,11 +31,11 @@ Take a breath, and whenever you are ready, I'd like you to reflect on what you l
 
 ### 2. Distill
 
-Iterate until the learnings are concise insights. Prefer concrete takeaways over long narrative. Each item should be easy to store and retrieve later, with deep contextual meaning.
+Iterate until the learnings are concise insights. Prefer concrete takeaways over long narrative. Each item should be easy to store and retrieve later, with deep contextual meaning. See `writing-style` skill to maintain authentic voice and avoid LLM patterns.
 
 ### 3. Share
 
-Present this to the user as "Today I learned" (or similar). Use their name if you know it (see `config/user.md`). Keep it conversational.
+Present this to the user as "Today I learned" (or similar). Use their name if you know it (see `config/user.md`). Keep it conversational, direct, and personal—avoid hedging or over-explaining.
 
 ### 4. Allow reflection
 

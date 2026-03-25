@@ -7,6 +7,7 @@ import {
   PointerSensor,
   useSensor,
   useSensors,
+  useDroppable,
   type DragEndEvent,
   type DragStartEvent,
 } from "@dnd-kit/core";
@@ -22,6 +23,71 @@ import type { Job } from "./kanban-card";
 const STALE_DAYS = 5;
 
 type RelevanceLevel = 0 | 1 | 2 | 3;
+type PostingType = "job" | "internship" | "grant";
+
+const TYPE_CONFIG: Record<PostingType, { label: string; color: string }> = {
+  job: { label: "Jobs", color: "bg-blue-100" },
+  internship: { label: "Internships", color: "bg-green-100" },
+  grant: { label: "Grants", color: "bg-purple-100" },
+};
+
+// ---------------------------------------------------------------------------
+// Flat Section Component (for Viewed/Stale/Interested/Applied)
+// ---------------------------------------------------------------------------
+interface FlatSectionProps {
+  droppableId: string;
+  label: string;
+  jobs: Job[];
+  onStarToggle: (jobId: number) => void;
+  onCardClick: (jobId: number) => void;
+  defaultCollapsed?: boolean;
+}
+
+function FlatSection({ droppableId, label, jobs, onStarToggle, onCardClick, defaultCollapsed = false }: FlatSectionProps) {
+  const { setNodeRef, isOver } = useDroppable({ id: droppableId });
+  const [isCollapsed, setIsCollapsed] = useState(defaultCollapsed);
+
+  return (
+    <div
+      ref={setNodeRef}
+      className={`rounded-lg p-2 transition-all ${
+        isOver ? "ring-2 ring-blue-400 bg-blue-50/50" : "bg-zinc-50"
+      }`}
+    >
+      <div className="mb-2 flex items-center justify-between px-1">
+        <button
+          onClick={() => setIsCollapsed(!isCollapsed)}
+          className="flex items-center gap-1 text-xs font-semibold text-zinc-700 hover:text-zinc-900 transition-colors"
+        >
+          <span className="text-[10px]">{isCollapsed ? "▶" : "▼"}</span>
+          <span>{label}</span>
+        </button>
+        <span className="inline-flex h-4 min-w-[16px] items-center justify-center rounded-full bg-zinc-200 px-1 text-[10px] font-medium text-zinc-500">
+          {jobs.length}
+        </span>
+      </div>
+      {!isCollapsed && (
+        <div className="space-y-2">
+          {jobs.length === 0 ? (
+            <div className="flex min-h-[60px] items-center justify-center rounded border-2 border-dashed border-zinc-300 py-4 text-xs text-zinc-400">
+              Drop here
+            </div>
+          ) : (
+            jobs.map((job) => (
+              <KanbanCard
+                key={job.id}
+                job={job}
+                onStarToggle={onStarToggle}
+                onClick={onCardClick}
+                showLevelBadge
+              />
+            ))
+          )}
+        </div>
+      )}
+    </div>
+  );
+}
 
 // ---------------------------------------------------------------------------
 // Props
@@ -46,26 +112,32 @@ function isStale(job: Job): boolean {
   return new Date(job.discoveredAt).getTime() < cutoff;
 }
 
-/** Parse a droppable id to determine target stage and relevance.
+/** Parse a droppable id to determine target type, stage, and relevance.
  *  Examples:
- *    "column-inbox-5" → { stage: "inbox", relevance: 5 }
- *    "column-viewed-3" → { stage: "viewed", relevance: 3 }
- *    "column-stale-1" → { stage: "inbox", relevance: 1 } (stale is still inbox stage)
- *    "column-applied-4" → { stage: "applied", relevance: 4 }
+ *    "column-job-inbox-1" → { type: "job", stage: "inbox", relevance: 1 }
+ *    "column-internship-viewed" → { type: "internship", stage: "viewed", relevance: null }
+ *    "column-grant-stale" → { type: "grant", stage: "inbox", relevance: null } (stale is still inbox stage)
+ *    "column-job-interested" → { type: "job", stage: "interested", relevance: null }
+ *    "column-job-applied" → { type: "job", stage: "applied", relevance: null }
  */
 function parseDroppableId(
   id: string
-): { stage: string; relevance: number | null } | null {
-  // Pattern: "column-{stage}-{level}"
-  const match = id.match(/^column-(\w+)-(\d+)$/);
-  if (match) {
-    const [, stage, levelStr] = match;
+): { type: string; stage: string; relevance: number | null } | null {
+  // Pattern: "column-{type}-{stage}-{level}" (for inbox with levels)
+  const matchWithLevel = id.match(/^column-(\w+)-(\w+)-(\d+)$/);
+  if (matchWithLevel) {
+    const [, type, stage, levelStr] = matchWithLevel;
     const level = parseInt(levelStr, 10);
-
-    // Stale is still inbox stage internally
     const actualStage = stage === "stale" ? "inbox" : stage;
+    return { type, stage: actualStage, relevance: isNaN(level) ? null : level };
+  }
 
-    return { stage: actualStage, relevance: isNaN(level) ? null : level };
+  // Pattern: "column-{type}-{stage}" (for flat lists: viewed/stale/interested/applied)
+  const matchNoLevel = id.match(/^column-(\w+)-(\w+)$/);
+  if (matchNoLevel) {
+    const [, type, stage] = matchNoLevel;
+    const actualStage = stage === "stale" ? "inbox" : stage;
+    return { type, stage: actualStage, relevance: null };
   }
 
   return null;
@@ -92,60 +164,48 @@ export function KanbanBoard({ initialJobs, lastScrape }: KanbanBoardProps) {
   const sensors = useSensors(pointerSensor);
 
   // -------------------------------------------------------------------------
-  // Computed buckets
+  // Computed buckets: organized by type → stage → relevance
   // -------------------------------------------------------------------------
-  const { inboxByRelevance, viewedByRelevance, staleByRelevance, appliedByRelevance } = useMemo(() => {
-    const inbox: Record<number, Job[]> = { 1: [], 2: [], 3: [], 0: [] };
-    const viewed: Record<number, Job[]> = { 1: [], 2: [], 3: [], 0: [] };
-    const stale: Record<number, Job[]> = { 1: [], 2: [], 3: [], 0: [] };
-    const applied: Record<number, Job[]> = { 1: [], 2: [], 3: [], 0: [] };
+  const postingsByType = useMemo(() => {
+    const byType: Record<PostingType, {
+      inbox: Record<number, Job[]>;
+      viewed: Job[];
+      stale: Job[];
+      interested: Job[];
+      applied: Job[];
+    }> = {
+      job: { inbox: { 1: [], 2: [], 3: [], 0: [] }, viewed: [], stale: [], interested: [], applied: [] },
+      internship: { inbox: { 1: [], 2: [], 3: [], 0: [] }, viewed: [], stale: [], interested: [], applied: [] },
+      grant: { inbox: { 1: [], 2: [], 3: [], 0: [] }, viewed: [], stale: [], interested: [], applied: [] },
+    };
 
     for (const job of jobs) {
+      const type = (job.type ?? "job") as PostingType;
       const stage = job.stage ?? "inbox";
       const rel = (job.relevance ?? 0) as number;
       const bucket = rel >= 0 && rel <= 3 ? rel : 0;
 
+      // Skip dismissed jobs
+      if (stage === "dismissed") continue;
+
       if (stage === "viewed") {
-        viewed[bucket].push(job);
+        byType[type].viewed.push(job);
+      } else if (stage === "interested") {
+        byType[type].interested.push(job);
       } else if (stage === "applied") {
-        applied[bucket].push(job);
-      } else if (stage === "dismissed") {
-        // Dismissed jobs are not shown on the board
-        continue;
+        byType[type].applied.push(job);
       } else {
         // inbox (or any unknown stage treated as inbox)
         if (isStale(job)) {
-          stale[bucket].push(job);
+          byType[type].stale.push(job);
         } else {
-          inbox[bucket].push(job);
+          byType[type].inbox[bucket].push(job);
         }
       }
     }
 
-    return {
-      inboxByRelevance: inbox,
-      viewedByRelevance: viewed,
-      staleByRelevance: stale,
-      appliedByRelevance: applied,
-    };
+    return byType;
   }, [jobs]);
-
-  const inboxCount = Object.values(inboxByRelevance).reduce(
-    (sum, arr) => sum + arr.length,
-    0
-  );
-  const viewedCount = Object.values(viewedByRelevance).reduce(
-    (sum, arr) => sum + arr.length,
-    0
-  );
-  const staleCount = Object.values(staleByRelevance).reduce(
-    (sum, arr) => sum + arr.length,
-    0
-  );
-  const appliedCount = Object.values(appliedByRelevance).reduce(
-    (sum, arr) => sum + arr.length,
-    0
-  );
 
   // -------------------------------------------------------------------------
   // Drag handlers
@@ -173,7 +233,10 @@ export function KanbanBoard({ initialJobs, lastScrape }: KanbanBoardProps) {
       if (!currentJob) return;
 
       // Build the patch
-      const patch: { stage?: string; relevance?: number } = {};
+      const patch: { type?: string; stage?: string; relevance?: number } = {};
+      if (target.type !== (currentJob.type ?? "job")) {
+        patch.type = target.type;
+      }
       if (target.stage !== (currentJob.stage ?? "inbox")) {
         patch.stage = target.stage;
       }
@@ -200,7 +263,7 @@ export function KanbanBoard({ initialJobs, lastScrape }: KanbanBoardProps) {
 
       // Persist to server
       try {
-        const res = await fetch(`/api/jobs/${jobId}`, {
+        const res = await fetch(`/api/postings/${jobId}`, {
           method: "PATCH",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify(patch),
@@ -224,27 +287,31 @@ export function KanbanBoard({ initialJobs, lastScrape }: KanbanBoardProps) {
   );
 
   // -------------------------------------------------------------------------
-  // Star toggle
+  // Star toggle - moves to/from interested stage
   // -------------------------------------------------------------------------
   const handleStarToggle = useCallback(
     async (jobId: number) => {
       const currentJob = jobs.find((j) => j.id === jobId);
       if (!currentJob) return;
 
-      const newStarred = currentJob.starred === 1 ? 0 : 1;
+      // Toggle between interested and previous stage (or inbox)
+      const isInterested = currentJob.stage === "interested";
+      const newStage = isInterested ? (currentJob.stage === "applied" ? "viewed" : "inbox") : "interested";
+      const newStarred = isInterested ? 0 : 1;
 
       // Optimistic update
+      const now = new Date().toISOString();
       setJobs((prev) =>
         prev.map((j) =>
-          j.id === jobId ? { ...j, starred: newStarred } : j
+          j.id === jobId ? { ...j, starred: newStarred, stage: newStage, updatedAt: now } : j
         )
       );
 
       try {
-        const res = await fetch(`/api/jobs/${jobId}`, {
+        const res = await fetch(`/api/postings/${jobId}`, {
           method: "PATCH",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ starred: newStarred }),
+          body: JSON.stringify({ starred: newStarred, stage: newStage }),
         });
         if (!res.ok) {
           // Revert
@@ -266,7 +333,7 @@ export function KanbanBoard({ initialJobs, lastScrape }: KanbanBoardProps) {
   // Stage change (from detail panel)
   // -------------------------------------------------------------------------
   const handleStageChange = useCallback(
-    async (jobId: number, newStage: "inbox" | "viewed" | "applied" | "dismissed") => {
+    async (jobId: number, newStage: "inbox" | "viewed" | "interested" | "applied" | "dismissed") => {
       const currentJob = jobs.find((j) => j.id === jobId);
       if (!currentJob) return;
       if ((currentJob.stage ?? "inbox") === newStage) return;
@@ -280,7 +347,7 @@ export function KanbanBoard({ initialJobs, lastScrape }: KanbanBoardProps) {
       );
 
       try {
-        const res = await fetch(`/api/jobs/${jobId}`, {
+        const res = await fetch(`/api/postings/${jobId}`, {
           method: "PATCH",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({ stage: newStage }),
@@ -318,10 +385,43 @@ export function KanbanBoard({ initialJobs, lastScrape }: KanbanBoardProps) {
       );
 
       try {
-        const res = await fetch(`/api/jobs/${jobId}`, {
+        const res = await fetch(`/api/postings/${jobId}`, {
           method: "PATCH",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({ relevance: newRelevance }),
+        });
+        if (!res.ok) {
+          setJobs((prev) => prev.map((j) => (j.id === jobId ? currentJob : j)));
+        }
+      } catch {
+        setJobs((prev) => prev.map((j) => (j.id === jobId ? currentJob : j)));
+      }
+    },
+    [jobs]
+  );
+
+  // -------------------------------------------------------------------------
+  // Type change (from detail panel)
+  // -------------------------------------------------------------------------
+  const handleTypeChange = useCallback(
+    async (jobId: number, newType: "job" | "internship" | "grant") => {
+      const currentJob = jobs.find((j) => j.id === jobId);
+      if (!currentJob) return;
+      if ((currentJob.type ?? "job") === newType) return;
+
+      // Optimistic update
+      const now = new Date().toISOString();
+      setJobs((prev) =>
+        prev.map((j) =>
+          j.id === jobId ? { ...j, type: newType, updatedAt: now } : j
+        )
+      );
+
+      try {
+        const res = await fetch(`/api/postings/${jobId}`, {
+          method: "PATCH",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ type: newType }),
         });
         if (!res.ok) {
           setJobs((prev) => prev.map((j) => (j.id === jobId ? currentJob : j)));
@@ -351,7 +451,7 @@ export function KanbanBoard({ initialJobs, lastScrape }: KanbanBoardProps) {
         );
 
         try {
-          await fetch(`/api/jobs/${jobId}`, {
+          await fetch(`/api/postings/${jobId}`, {
             method: "PATCH",
             headers: { "Content-Type": "application/json" },
             body: JSON.stringify({ stage: "viewed" }),
@@ -367,7 +467,7 @@ export function KanbanBoard({ initialJobs, lastScrape }: KanbanBoardProps) {
 
         // Log view event
         try {
-          await fetch("/api/jobs/events", {
+          await fetch("/api/postings/events", {
             method: "POST",
             headers: { "Content-Type": "application/json" },
             body: JSON.stringify({
@@ -424,110 +524,96 @@ export function KanbanBoard({ initialJobs, lastScrape }: KanbanBoardProps) {
         </div>
       )}
 
-      {/* Board: horizontal scroll container */}
+      {/* Board: 3 columns by type (Jobs, Internships, Grants) */}
       <div className="flex gap-4 overflow-x-auto pb-4">
-        {/* ── Inbox (fresh) ── */}
-        <div className="flex min-w-[280px] max-w-[320px] shrink-0 flex-col rounded-xl bg-zinc-100 p-3">
-          {/* Inbox header */}
-          <div className="mb-3 flex items-center justify-between px-1">
-            <h2 className="text-sm font-semibold text-zinc-700">
-              Inbox (fresh)
-            </h2>
-            <span className="inline-flex h-5 min-w-[20px] items-center justify-center rounded-full bg-zinc-200 px-1.5 text-xs font-medium text-zinc-600">
-              {inboxCount}
-            </span>
-          </div>
+        {(["job", "internship", "grant"] as PostingType[]).map((type) => {
+          const typeData = postingsByType[type];
+          const typeConfig = TYPE_CONFIG[type];
 
-          <div
-            className="flex-1 space-y-1 overflow-y-auto pr-0.5"
-            style={{ maxHeight: "calc(100vh - 180px)" }}
-          >
-            {([1, 2, 3, 0] as RelevanceLevel[]).map((level) => (
-              <RelevanceSection
-                key={level}
-                level={level}
-                jobs={inboxByRelevance[level]}
-                onStarToggle={handleStarToggle}
-                onCardClick={handleCardClick}
-              />
-            ))}
-          </div>
-        </div>
+          // Count totals for this type
+          const inboxCount = Object.values(typeData.inbox).reduce((sum, arr) => sum + arr.length, 0);
+          const totalCount = inboxCount + typeData.viewed.length + typeData.stale.length + typeData.interested.length + typeData.applied.length;
 
-        {/* ── Viewed ── */}
-        <div className="flex min-w-[280px] max-w-[320px] shrink-0 flex-col rounded-xl bg-zinc-100 p-3">
-          <div className="mb-3 flex items-center justify-between px-1">
-            <h2 className="text-sm font-semibold text-zinc-700">Viewed</h2>
-            <span className="inline-flex h-5 min-w-[20px] items-center justify-center rounded-full bg-zinc-200 px-1.5 text-xs font-medium text-zinc-600">
-              {viewedCount}
-            </span>
-          </div>
-          <div
-            className="flex-1 space-y-1 overflow-y-auto pr-0.5"
-            style={{ maxHeight: "calc(100vh - 180px)" }}
-          >
-            {([1, 2, 3, 0] as RelevanceLevel[]).map((level) => (
-              <RelevanceSection
-                key={level}
-                level={level}
-                jobs={viewedByRelevance[level]}
-                onStarToggle={handleStarToggle}
-                onCardClick={handleCardClick}
-                stagePrefix="viewed"
-              />
-            ))}
-          </div>
-        </div>
+          return (
+            <div
+              key={type}
+              className={`flex min-w-[320px] max-w-[360px] shrink-0 flex-col rounded-xl ${typeConfig.color} p-3`}
+            >
+              {/* Type column header */}
+              <div className="mb-3 flex items-center justify-between px-1">
+                <h2 className="text-sm font-semibold text-zinc-800">{typeConfig.label}</h2>
+                <span className="inline-flex h-5 min-w-[20px] items-center justify-center rounded-full bg-white/60 px-1.5 text-xs font-medium text-zinc-700">
+                  {totalCount}
+                </span>
+              </div>
 
-        {/* ── Stale ── */}
-        <div className="flex min-w-[280px] max-w-[320px] shrink-0 flex-col rounded-xl bg-zinc-100 p-3">
-          <div className="mb-3 flex items-center justify-between px-1">
-            <h2 className="text-sm font-semibold text-zinc-700">Stale</h2>
-            <span className="inline-flex h-5 min-w-[20px] items-center justify-center rounded-full bg-zinc-200 px-1.5 text-xs font-medium text-zinc-600">
-              {staleCount}
-            </span>
-          </div>
-          <div
-            className="flex-1 space-y-1 overflow-y-auto pr-0.5"
-            style={{ maxHeight: "calc(100vh - 180px)" }}
-          >
-            {([1, 2, 3, 0] as RelevanceLevel[]).map((level) => (
-              <RelevanceSection
-                key={level}
-                level={level}
-                jobs={staleByRelevance[level]}
-                onStarToggle={handleStarToggle}
-                onCardClick={handleCardClick}
-                stagePrefix="stale"
-              />
-            ))}
-          </div>
-        </div>
+              {/* Scrollable container for 4 vertical sections */}
+              <div
+                className="flex-1 space-y-3 overflow-y-auto pr-0.5"
+                style={{ maxHeight: "calc(100vh - 180px)" }}
+              >
+                {/* ── Inbox section (collapsible levels) ── */}
+                <div className="rounded-lg bg-white p-2">
+                  <div className="mb-2 flex items-center justify-between px-1">
+                    <h3 className="text-xs font-semibold text-zinc-700">Inbox (fresh)</h3>
+                    <span className="inline-flex h-4 min-w-[16px] items-center justify-center rounded-full bg-zinc-200 px-1 text-[10px] font-medium text-zinc-500">
+                      {inboxCount}
+                    </span>
+                  </div>
+                  <div className="space-y-1">
+                    {([1, 2, 3, 0] as RelevanceLevel[]).map((level) => (
+                      <RelevanceSection
+                        key={level}
+                        level={level}
+                        jobs={typeData.inbox[level]}
+                        onStarToggle={handleStarToggle}
+                        onCardClick={handleCardClick}
+                        stagePrefix={`${type}-inbox`}
+                      />
+                    ))}
+                  </div>
+                </div>
 
-        {/* ── Applied ── */}
-        <div className="flex min-w-[280px] max-w-[320px] shrink-0 flex-col rounded-xl bg-zinc-100 p-3">
-          <div className="mb-3 flex items-center justify-between px-1">
-            <h2 className="text-sm font-semibold text-zinc-700">Applied</h2>
-            <span className="inline-flex h-5 min-w-[20px] items-center justify-center rounded-full bg-zinc-200 px-1.5 text-xs font-medium text-zinc-600">
-              {appliedCount}
-            </span>
-          </div>
-          <div
-            className="flex-1 space-y-1 overflow-y-auto pr-0.5"
-            style={{ maxHeight: "calc(100vh - 180px)" }}
-          >
-            {([1, 2, 3, 0] as RelevanceLevel[]).map((level) => (
-              <RelevanceSection
-                key={level}
-                level={level}
-                jobs={appliedByRelevance[level]}
-                onStarToggle={handleStarToggle}
-                onCardClick={handleCardClick}
-                stagePrefix="applied"
-              />
-            ))}
-          </div>
-        </div>
+                {/* ── Viewed section (flat list with badges) ── */}
+                <FlatSection
+                  droppableId={`column-${type}-viewed`}
+                  label="Viewed"
+                  jobs={typeData.viewed}
+                  onStarToggle={handleStarToggle}
+                  onCardClick={handleCardClick}
+                />
+
+                {/* ── Stale section (flat list with badges) ── */}
+                <FlatSection
+                  droppableId={`column-${type}-stale`}
+                  label="Stale"
+                  jobs={typeData.stale}
+                  onStarToggle={handleStarToggle}
+                  onCardClick={handleCardClick}
+                  defaultCollapsed={true}
+                />
+
+                {/* ── Interested section (flat list with badges) ── */}
+                <FlatSection
+                  droppableId={`column-${type}-interested`}
+                  label="⭐ Interested"
+                  jobs={typeData.interested}
+                  onStarToggle={handleStarToggle}
+                  onCardClick={handleCardClick}
+                />
+
+                {/* ── Applied section (flat list with badges) ── */}
+                <FlatSection
+                  droppableId={`column-${type}-applied`}
+                  label="Applied"
+                  jobs={typeData.applied}
+                  onStarToggle={handleStarToggle}
+                  onCardClick={handleCardClick}
+                />
+              </div>
+            </div>
+          );
+        })}
       </div>
 
       {/* Drag overlay — follows the cursor */}
@@ -554,6 +640,7 @@ export function KanbanBoard({ initialJobs, lastScrape }: KanbanBoardProps) {
             onStageChange={handleStageChange}
             onStarToggle={handleStarToggle}
             onRelevanceChange={handleRelevanceChange}
+            onTypeChange={handleTypeChange}
           />
         );
       })()}

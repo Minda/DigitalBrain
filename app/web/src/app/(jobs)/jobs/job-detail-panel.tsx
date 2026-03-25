@@ -5,8 +5,9 @@ import { useEffect, useRef, useState } from "react";
 // ---------------------------------------------------------------------------
 // Types — local to this client component (no server imports)
 // ---------------------------------------------------------------------------
-type Stage = "inbox" | "viewed" | "applied" | "dismissed";
+type Stage = "inbox" | "viewed" | "interested" | "applied" | "dismissed";
 type RelevanceLevel = 0 | 1 | 2 | 3;
+type PostingType = "job" | "internship" | "grant";
 
 export interface JobDetailPanelProps {
   job: {
@@ -17,6 +18,7 @@ export interface JobDetailPanelProps {
     location: string | null;
     description: string;
     source: string;
+    type: string | null; // 'job' | 'internship' | 'grant'
     relevance: number | null;
     starred: number | null;
     stage: string | null;
@@ -32,6 +34,7 @@ export interface JobDetailPanelProps {
   onStageChange: (jobId: number, stage: Stage) => void;
   onStarToggle: (jobId: number) => void;
   onRelevanceChange: (jobId: number, relevance: RelevanceLevel) => void;
+  onTypeChange?: (jobId: number, type: PostingType) => void;
 }
 
 // ---------------------------------------------------------------------------
@@ -72,8 +75,15 @@ function formatSalary(min: number | null, max: number | null): string | null {
 const STAGES: { value: Stage; label: string }[] = [
   { value: "inbox", label: "Inbox" },
   { value: "viewed", label: "Viewed" },
+  { value: "interested", label: "⭐ Interested" },
   { value: "applied", label: "Applied" },
   { value: "dismissed", label: "Dismiss" },
+];
+
+const POSTING_TYPES: { value: PostingType; label: string }[] = [
+  { value: "job", label: "Job" },
+  { value: "internship", label: "Internship" },
+  { value: "grant", label: "Grant" },
 ];
 
 // ---------------------------------------------------------------------------
@@ -85,10 +95,12 @@ export function JobDetailPanel({
   onStageChange,
   onStarToggle,
   onRelevanceChange,
+  onTypeChange,
 }: JobDetailPanelProps) {
   const panelRef = useRef<HTMLDivElement>(null);
   const [isOpen, setIsOpen] = useState(false);
   const [breakdownOpen, setBreakdownOpen] = useState(false);
+  const [sourcePopoverOpen, setSourcePopoverOpen] = useState(false);
 
   // Trigger slide-in on mount
   useEffect(() => {
@@ -108,6 +120,7 @@ export function JobDetailPanel({
   const salary = formatSalary(job.salaryMin, job.salaryMax);
   const currentStage = (job.stage ?? "inbox") as Stage;
   const currentRelevance = (job.relevance ?? 0) as RelevanceLevel;
+  const currentType = (job.type ?? "job") as PostingType;
   const isStarred = job.starred === 1;
 
   return (
@@ -184,6 +197,61 @@ export function JobDetailPanel({
           {/* Salary */}
           {salary && (
             <p className="mt-2 text-sm font-medium text-green-700">{salary}</p>
+          )}
+
+          {/* View posting button */}
+          {job.url && (
+            <a
+              href={job.url}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="mt-3 inline-flex items-center gap-1.5 rounded-md bg-blue-600 px-3 py-1.5 text-sm font-medium text-white hover:bg-blue-700 transition-colors"
+            >
+              <span>View Original Posting</span>
+              <svg
+                xmlns="http://www.w3.org/2000/svg"
+                width="14"
+                height="14"
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                strokeWidth="2"
+                strokeLinecap="round"
+                strokeLinejoin="round"
+              >
+                <path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6" />
+                <polyline points="15 3 21 3 21 9" />
+                <line x1="10" y1="14" x2="21" y2="3" />
+              </svg>
+            </a>
+          )}
+
+          {/* Type selector */}
+          {onTypeChange && (
+            <div className="mt-5">
+              <p className="mb-1.5 text-xs font-medium uppercase tracking-wide text-zinc-400">
+                Type
+              </p>
+              <div className="flex gap-2">
+                {POSTING_TYPES.map(({ value, label }) => {
+                  const isActive = currentType === value;
+                  return (
+                    <button
+                      key={value}
+                      onClick={() => onTypeChange(job.id, value)}
+                      className={`rounded-md px-3 py-1 text-sm font-medium transition-colors ${
+                        isActive
+                          ? "bg-purple-600 text-white"
+                          : "bg-zinc-100 text-zinc-600 hover:bg-zinc-200"
+                      }`}
+                      aria-label={`Set type to ${label}`}
+                    >
+                      {label}
+                    </button>
+                  );
+                })}
+              </div>
+            </div>
           )}
 
           {/* Relevance buttons */}
@@ -331,19 +399,58 @@ export function JobDetailPanel({
             {job.postedAt && <span>Posted {relativeTime(job.postedAt)}</span>}
             {job.postedAt && <span>&middot;</span>}
             <span>Discovered {relativeTime(job.discoveredAt)}</span>
-            {job.url && (
-              <>
-                <span>&middot;</span>
-                <a
-                  href={job.url}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="font-medium text-blue-600 hover:underline"
+            <span>&middot;</span>
+
+            {/* Source popover */}
+            <div className="relative">
+              <button
+                type="button"
+                onMouseEnter={() => setSourcePopoverOpen(true)}
+                onMouseLeave={() => setSourcePopoverOpen(false)}
+                className="font-medium text-zinc-600 hover:text-zinc-900 transition-colors"
+              >
+                Source: {job.source === "hn" ? "Hacker News" : job.source === "80k" ? "80,000 Hours" : job.source}
+              </button>
+
+              {sourcePopoverOpen && (
+                <div
+                  className="absolute bottom-full left-0 mb-2 w-64 rounded-lg border border-zinc-200 bg-white p-3 shadow-lg z-10"
+                  onMouseEnter={() => setSourcePopoverOpen(true)}
+                  onMouseLeave={() => setSourcePopoverOpen(false)}
                 >
-                  View on HN
-                </a>
-              </>
-            )}
+                  <div className="space-y-2 text-xs">
+                    <div className="flex justify-between">
+                      <span className="text-zinc-500">Source:</span>
+                      <span className="font-medium text-zinc-900">
+                        {job.source === "hn" ? "Hacker News" : job.source === "80k" ? "80,000 Hours" : job.source}
+                      </span>
+                    </div>
+                    {job.sourceId && (
+                      <div className="flex justify-between">
+                        <span className="text-zinc-500">Source ID:</span>
+                        <span className="font-mono text-zinc-700">{job.sourceId}</span>
+                      </div>
+                    )}
+                    <div className="flex justify-between">
+                      <span className="text-zinc-500">Discovered:</span>
+                      <span className="text-zinc-700">{new Date(job.discoveredAt).toLocaleDateString()}</span>
+                    </div>
+                    {job.url && (
+                      <div className="pt-2 border-t border-zinc-100">
+                        <a
+                          href={job.url}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="block font-medium text-blue-600 hover:underline"
+                        >
+                          View original posting →
+                        </a>
+                      </div>
+                    )}
+                  </div>
+                </div>
+              )}
+            </div>
           </div>
         </div>
       </div>

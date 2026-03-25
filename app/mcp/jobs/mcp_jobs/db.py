@@ -1,11 +1,14 @@
 """
-SQLite access layer for the jobs database.
+SQLite access layer for the postings database.
 
 The jobs.db file is shared with the Node.js app (Drizzle ORM).
 This module reads/writes to the same schema using raw SQL via aiosqlite.
 
 Database location: DigitalBrain/data/jobs.db
 Override with env var: JOBS_DB_PATH
+
+Note: Database file is still named jobs.db for backward compatibility,
+      but the table is named "postings" (renamed from "jobs").
 """
 
 import os
@@ -59,7 +62,10 @@ async def complete_scrape_run(
     jobs_new: int,
     db_path: Optional[str] = None,
 ) -> None:
-    """Mark a scrape_runs record as completed with counts."""
+    """Mark a scrape_runs record as completed with counts.
+
+    Note: Parameter names still use 'jobs' for backward compatibility.
+    """
     path = db_path or get_db_path()
     async with aiosqlite.connect(path) as db:
         await db.execute(
@@ -82,7 +88,7 @@ async def fail_scrape_run(run_id: int, error: str, db_path: Optional[str] = None
         await db.commit()
 
 
-async def upsert_job(
+async def upsert_posting(
     *,
     url: str,
     company: str,
@@ -92,42 +98,47 @@ async def upsert_job(
     title: Optional[str] = None,
     location: Optional[str] = None,
     posted_at: Optional[str] = None,
+    posting_type: str = 'job',
     db_path: Optional[str] = None,
 ) -> str:
     """
-    Insert a new job or update an existing one (dedup by source + source_id).
+    Insert a new posting or update an existing one (dedup by source + source_id).
     Returns 'inserted' or 'updated'.
     """
     path = db_path or get_db_path()
     ts = now_iso()
     async with aiosqlite.connect(path) as db:
         async with db.execute(
-            "SELECT id FROM jobs WHERE source = ? AND source_id = ?",
+            "SELECT id FROM postings WHERE source = ? AND source_id = ?",
             (source, source_id),
         ) as cursor:
             existing = await cursor.fetchone()
 
         if existing:
             await db.execute(
-                "UPDATE jobs SET description = ?, updated_at = ? WHERE source = ? AND source_id = ?",
+                "UPDATE postings SET description = ?, updated_at = ? WHERE source = ? AND source_id = ?",
                 (description, ts, source, source_id),
             )
             await db.commit()
             return "updated"
         else:
             await db.execute(
-                """INSERT INTO jobs
+                """INSERT INTO postings
                    (url, title, company, location, description, source, source_id,
-                    posted_at, discovered_at, updated_at)
-                   VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)""",
+                    posted_at, discovered_at, updated_at, type)
+                   VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)""",
                 (url, title, company, location, description, source, source_id,
-                 posted_at, ts, ts),
+                 posted_at, ts, ts, posting_type),
             )
             await db.commit()
             return "inserted"
 
 
-async def count_jobs(
+# Backward compatibility alias
+upsert_job = upsert_posting
+
+
+async def count_postings(
     *,
     source: Optional[str] = None,
     before_date: Optional[str] = None,
@@ -135,16 +146,16 @@ async def count_jobs(
     db_path: Optional[str] = None,
 ) -> int:
     """
-    Count jobs matching the given filters.
+    Count postings matching the given filters.
 
     Args:
         source: Filter by source ('hn', '80k', etc.)
-        before_date: Count jobs discovered before this date (ISO format)
-        after_date: Count jobs discovered after this date (ISO format)
+        before_date: Count postings discovered before this date (ISO format)
+        after_date: Count postings discovered after this date (ISO format)
         db_path: Database path (optional)
 
     Returns:
-        Number of jobs matching filters
+        Number of postings matching filters
     """
     path = db_path or get_db_path()
 
@@ -163,7 +174,7 @@ async def count_jobs(
         conditions.append("discovered_at > ?")
         params.append(after_date)
 
-    query = "SELECT COUNT(*) FROM jobs"
+    query = "SELECT COUNT(*) FROM postings"
     if conditions:
         query += " WHERE " + " AND ".join(conditions)
 
@@ -173,7 +184,11 @@ async def count_jobs(
             return row[0] if row else 0
 
 
-async def delete_jobs(
+# Backward compatibility alias
+count_jobs = count_postings
+
+
+async def delete_postings(
     *,
     source: Optional[str] = None,
     before_date: Optional[str] = None,
@@ -181,16 +196,16 @@ async def delete_jobs(
     db_path: Optional[str] = None,
 ) -> int:
     """
-    Delete jobs matching the given filters.
+    Delete postings matching the given filters.
 
     Args:
-        source: Filter by source ('hn', '80k', etc.)
-        before_date: Delete jobs discovered before this date (ISO format)
-        after_date: Delete jobs discovered after this date (ISO format)
+        source: Filter by source ('hn', '80k', etc.')
+        before_date: Delete postings discovered before this date (ISO format)
+        after_date: Delete postings discovered after this date (ISO format)
         db_path: Database path (optional)
 
     Returns:
-        Number of jobs deleted
+        Number of postings deleted
     """
     path = db_path or get_db_path()
 
@@ -209,7 +224,7 @@ async def delete_jobs(
         conditions.append("discovered_at > ?")
         params.append(after_date)
 
-    query = "DELETE FROM jobs"
+    query = "DELETE FROM postings"
     if conditions:
         query += " WHERE " + " AND ".join(conditions)
 
@@ -217,3 +232,7 @@ async def delete_jobs(
         cursor = await db.execute(query, params)
         await db.commit()
         return cursor.rowcount
+
+
+# Backward compatibility alias
+delete_jobs = delete_postings

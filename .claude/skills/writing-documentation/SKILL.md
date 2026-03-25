@@ -146,6 +146,8 @@ When the feature is a web app feature (lives in `app/web/`):
 - Known limitations / pending work
 - `## Changelog` section (most recent entry first)
 
+**Writing style:** See `writing-style` skill for voice guidelines. Documentation should be direct and practical, avoiding LLM patterns like "leveraging", "robust solutions", or excessive hedging.
+
 ### Step 3b — Other feature branch (MCP, agents)
 
 1. Read the feature's code in `app/mcp/[feature]/` or `app/agents/[feature]/`

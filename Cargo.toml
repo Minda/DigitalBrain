@@ -35,6 +35,9 @@ tokio = { version = "1.42", features = ["full"] }
 anyhow = "1.0"
 dirs = "5.0"
 
+# Image processing
+image = "0.24"
+
 # Internal crates
 minmind-core = { path = "src/crates/minmind-core" }
 minmind-store = { path = "src/crates/minmind-store" }

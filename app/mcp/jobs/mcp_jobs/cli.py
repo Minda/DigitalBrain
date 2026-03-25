@@ -17,6 +17,9 @@ import click
 
 from mcp_jobs.scrapers.hn import scrape_hn
 from mcp_jobs.scrapers.eightykhours import scrape_80k
+from mcp_jobs.scrapers.wellfound import scrape_wellfound
+from mcp_jobs.scrapers.stanford import scrape_stanford
+from mcp_jobs.scrapers.direct import scrape_direct_url, scrape_direct_urls
 from mcp_jobs.db import count_jobs, delete_jobs
 from mcp_jobs.classifier import classify_jobs
 
@@ -27,9 +30,9 @@ def cli():
 
 
 @cli.command()
-@click.option("--source", type=click.Choice(["hn", "80k"]), help="Which source to scrape")
+@click.option("--source", type=click.Choice(["hn", "80k", "wellfound", "stanford"]), help="Which source to scrape")
 @click.option("--all", "scrape_all", is_flag=True, help="Scrape all sources")
-@click.option("--show-browser", is_flag=True, default=False, help="Run browser non-headless (80k only)")
+@click.option("--show-browser", is_flag=True, default=False, help="Run browser non-headless (80k, wellfound, stanford)")
 @click.option("--json", "output_json", is_flag=True, default=False, help="Output result as JSON")
 def scrape(source: str, scrape_all: bool, show_browser: bool, output_json: bool):
     """Scrape job listings and store in the database."""
@@ -38,7 +41,7 @@ def scrape(source: str, scrape_all: bool, show_browser: bool, output_json: bool)
     if not source and not scrape_all:
         raise click.UsageError("Specify --source <name> or --all")
 
-    sources = ["hn", "80k"] if scrape_all else [source]
+    sources = ["hn", "80k", "wellfound", "stanford"] if scrape_all else [source]
 
     async def run():
         results = []
@@ -50,6 +53,10 @@ def scrape(source: str, scrape_all: bool, show_browser: bool, output_json: bool)
                     result = await scrape_hn()
                 elif src == "80k":
                     result = await scrape_80k(headless=not show_browser)
+                elif src == "wellfound":
+                    result = await scrape_wellfound()
+                elif src == "stanford":
+                    result = await scrape_stanford()
                 else:
                     click.echo(f"Unknown source: {src}", err=True)
                     continue
@@ -77,7 +84,7 @@ def scrape(source: str, scrape_all: bool, show_browser: bool, output_json: bool)
 
 @cli.command()
 @click.option("--all", "delete_all", is_flag=True, help="Delete all jobs")
-@click.option("--source", type=click.Choice(["hn", "80k"]), help="Delete jobs from specific source")
+@click.option("--source", type=click.Choice(["hn", "80k", "wellfound", "stanford"]), help="Delete jobs from specific source")
 @click.option("--before", "before_date", help="Delete jobs discovered before date (YYYY-MM-DD)")
 @click.option("--after", "after_date", help="Delete jobs discovered after date (YYYY-MM-DD)")
 @click.option("--between", "date_range", nargs=2, help="Delete jobs between dates (START END)")
@@ -178,6 +185,96 @@ def classify(batch_size: int, force: bool, output_json: bool):
                     click.echo(f"  Remaining:  {result['remaining']}")
                     click.echo(f"  Model:      {result['model']}")
                     click.echo(f"  Tokens:     {tokens['input']} in / {tokens['output']} out")
+        except Exception as e:
+            if output_json:
+                click.echo(_json.dumps({"error": str(e)}))
+            else:
+                click.echo(f"  Failed: {e}", err=True)
+            raise SystemExit(1)
+
+    asyncio.run(run())
+
+
+@cli.command()
+@click.argument("urls", nargs=-1, required=True)
+@click.option("--company", help="Company name (optional, will be extracted if not provided)")
+@click.option("--title", help="Job title (optional, will be extracted if not provided)")
+@click.option("--location", help="Location (optional)")
+@click.option("--description", help="Job description (if provided, skips scraping)")
+@click.option("--show-browser", is_flag=True, default=False, help="Run browser non-headless")
+@click.option("--json", "output_json", is_flag=True, default=False, help="Output result as JSON")
+def add(urls: tuple[str, ...], company: str, title: str, location: str, description: str, show_browser: bool, output_json: bool):
+    """Add job(s) from direct URL(s)."""
+    import json as _json
+    import hashlib
+    from mcp_jobs.db import upsert_job, create_scrape_run, complete_scrape_run
+
+    async def run():
+        if not output_json:
+            click.echo(f"Adding {len(urls)} job(s) from direct URL(s)...")
+
+        try:
+            # Manual mode: skip scraping if description is provided
+            if description and len(urls) == 1:
+                if not company:
+                    raise click.UsageError("--company is required when providing --description")
+                if not title:
+                    raise click.UsageError("--title is required when providing --description")
+
+                run_id = await create_scrape_run("direct")
+                url = urls[0]
+                source_id = hashlib.md5(url.encode()).hexdigest()[:16]
+
+                action = await upsert_job(
+                    url=url,
+                    company=company,
+                    title=title,
+                    location=location,
+                    description=description,
+                    source="direct",
+                    source_id=source_id,
+                )
+
+                jobs_new = 1 if action == "inserted" else 0
+                await complete_scrape_run(run_id, jobs_found=1, jobs_new=jobs_new)
+
+                if output_json:
+                    click.echo(_json.dumps({
+                        "source": "direct",
+                        "run_id": run_id,
+                        "jobs_found": 1,
+                        "jobs_new": jobs_new,
+                        "jobs_updated": 1 - jobs_new,
+                        "jobs_skipped": 0,
+                    }))
+                else:
+                    click.echo(f"  {jobs_new} new, {1 - jobs_new} updated, 0 skipped")
+
+            # Scraping mode
+            elif len(urls) == 1:
+                # Single URL with optional metadata
+                result = await scrape_direct_url(
+                    urls[0],
+                    company=company,
+                    title=title,
+                    location=location,
+                    headless=not show_browser,
+                )
+                if output_json:
+                    click.echo(_json.dumps(result.model_dump()))
+                else:
+                    click.echo(f"  {result.jobs_new} new, {result.jobs_updated} updated, {result.jobs_skipped} skipped")
+            else:
+                # Multiple URLs (metadata options ignored)
+                if company or title or location or description:
+                    if not output_json:
+                        click.echo("Warning: metadata options ignored for multiple URLs")
+                result = await scrape_direct_urls(list(urls), headless=not show_browser)
+                if output_json:
+                    click.echo(_json.dumps(result.model_dump()))
+                else:
+                    click.echo(f"  {result.jobs_new} new, {result.jobs_updated} updated, {result.jobs_skipped} skipped")
+
         except Exception as e:
             if output_json:
                 click.echo(_json.dumps({"error": str(e)}))

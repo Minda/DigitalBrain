@@ -62,6 +62,8 @@ For each repo with changes:
 
 **Format:** *"plain descriptive prose plus feat:, fix:, docs:"* — *"whatever helps keep the commit readable, memorable and concise"*
 
+**Voice:** See `writing-style` skill — be direct and specific, avoid LLM hedging patterns like "various improvements" or "enhance functionality"
+
 ```
 <type>: <description>
 
@@ -77,8 +79,14 @@ Co-Authored-By: Claude <name> <noreply@anthropic.com>
 
 **Good examples:**
 - `feat: Add committing-work skill for multi-repo commits`
+- `fix: Correct image optimization for RGBA to RGB conversion`
 - `docs: Update relational context with new permissions`
 - `chore: Reorganize memory files into topic folders`
+
+**Avoid:**
+- `fix: Various improvements to the codebase`
+- `feat: Enhanced documentation capabilities`
+- `chore: Updated files`
 
 ### 4. Confirm with User
 

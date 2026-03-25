@@ -2,6 +2,8 @@
 //!
 //! Usage: mm <command> [options]
 
+mod image;
+
 use std::path::PathBuf;
 use std::process::Command;
 
@@ -56,6 +58,11 @@ enum Commands {
     Todo {
         #[command(subcommand)]
         action: TodoCommands,
+    },
+    /// Image optimization utilities
+    Image {
+        #[command(subcommand)]
+        action: ImageCommands,
     },
 }
 
@@ -272,6 +279,29 @@ enum TodoCommands {
     },
 }
 
+#[derive(Subcommand)]
+enum ImageCommands {
+    /// Optimize an image (compress/convert)
+    Optimize {
+        /// Input image file path
+        input: String,
+        /// Output file path (optional, defaults to input_optimized.ext)
+        #[arg(short, long)]
+        output: Option<String>,
+        /// JPEG quality (1-100, default 85)
+        #[arg(short, long, default_value = "85")]
+        quality: u8,
+        /// Output format (jpg, png, defaults to jpg)
+        #[arg(short, long)]
+        format: Option<String>,
+    },
+    /// Get information about an image
+    Info {
+        /// Image file path
+        path: String,
+    },
+}
+
 fn main() -> anyhow::Result<()> {
     let cli = Cli::parse();
 
@@ -292,6 +322,7 @@ fn main() -> anyhow::Result<()> {
         Commands::Article { action } => handle_article_command(&store, action, &db_path),
         Commands::Config { action } => handle_config_command(&store, action),
         Commands::Todo { action } => handle_todo_command(&store, action),
+        Commands::Image { action } => handle_image_command(action),
     }
 }
 
@@ -1130,6 +1161,43 @@ fn handle_config_command(store: &Store, action: ConfigCommands) -> anyhow::Resul
                 .or_else(|_| find_config_by_short_id(store, &id))?;
             store.delete_summary_config(config_id)?;
             println!("Deleted summary config: {}", id);
+        }
+    }
+    Ok(())
+}
+
+fn handle_image_command(action: ImageCommands) -> anyhow::Result<()> {
+    match action {
+        ImageCommands::Optimize {
+            input,
+            output,
+            quality,
+            format,
+        } => {
+            let input_path = PathBuf::from(&input);
+            if !input_path.exists() {
+                anyhow::bail!("Input file does not exist: {}", input);
+            }
+
+            // Generate output path if not provided
+            let output_path = if let Some(out) = output {
+                PathBuf::from(out)
+            } else {
+                // Default to input_optimized.jpg or input_optimized.png
+                let stem = input_path.file_stem().unwrap_or_default();
+                let ext = format.as_deref().unwrap_or("jpg");
+                let new_name = format!("{}_optimized.{}", stem.to_string_lossy(), ext);
+                input_path.with_file_name(new_name)
+            };
+
+            crate::image::optimize_image(&input_path, &output_path, quality, format)?;
+        }
+        ImageCommands::Info { path } => {
+            let path = PathBuf::from(&path);
+            if !path.exists() {
+                anyhow::bail!("File does not exist: {}", path.display());
+            }
+            crate::image::get_image_info(&path)?;
         }
     }
     Ok(())

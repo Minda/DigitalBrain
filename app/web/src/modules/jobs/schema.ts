@@ -2,9 +2,9 @@ import { sqliteTable, text, integer, real } from "drizzle-orm/sqlite-core";
 import { type InferSelectModel, type InferInsertModel } from "drizzle-orm";
 
 // ---------------------------------------------------------------------------
-// jobs
+// postings (renamed from jobs - includes jobs, internships, grants)
 // ---------------------------------------------------------------------------
-export const jobs = sqliteTable("jobs", {
+export const postings = sqliteTable("postings", {
   id: integer("id").primaryKey({ autoIncrement: true }),
   url: text("url").unique(),
   title: text("title"),
@@ -15,6 +15,7 @@ export const jobs = sqliteTable("jobs", {
   description: text("description").notNull(),
   source: text("source").notNull(),
   sourceId: text("source_id"),
+  type: text("type").default("job"), // 'job' | 'internship' | 'grant'
   tier: integer("tier").default(0),
   score: real("score"),
   scoreBreakdown: text("score_breakdown"),
@@ -29,6 +30,9 @@ export const jobs = sqliteTable("jobs", {
   discoveredAt: text("discovered_at").notNull(),
   updatedAt: text("updated_at").notNull(),
 });
+
+// Backward compatibility alias
+export const jobs = postings;
 
 // ---------------------------------------------------------------------------
 // scrape_runs
@@ -52,7 +56,7 @@ export const userActions = sqliteTable("user_actions", {
   id: integer("id").primaryKey({ autoIncrement: true }),
   jobId: integer("job_id")
     .notNull()
-    .references(() => jobs.id),
+    .references(() => postings.id),
   action: text("action").notNull(),
   oldTier: integer("old_tier"),
   newTier: integer("new_tier"),
@@ -65,7 +69,7 @@ export const userActions = sqliteTable("user_actions", {
 export const events = sqliteTable("events", {
   id: integer("id").primaryKey({ autoIncrement: true }),
   eventType: text("event_type").notNull(),
-  jobId: integer("job_id").references(() => jobs.id),
+  jobId: integer("job_id").references(() => postings.id),
   payload: text("payload"),
   createdAt: text("created_at").notNull(),
 });
@@ -90,8 +94,12 @@ export const classificationRuns = sqliteTable("classification_runs", {
 // ---------------------------------------------------------------------------
 // Type helpers
 // ---------------------------------------------------------------------------
-export type Job = InferSelectModel<typeof jobs>;
-export type NewJob = InferInsertModel<typeof jobs>;
+export type Posting = InferSelectModel<typeof postings>;
+export type NewPosting = InferInsertModel<typeof postings>;
+
+// Backward compatibility alias
+export type Job = Posting;
+export type NewJob = NewPosting;
 
 export type ScrapeRun = InferSelectModel<typeof scrapeRuns>;
 export type NewScrapeRun = InferInsertModel<typeof scrapeRuns>;
