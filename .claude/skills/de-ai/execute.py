@@ -13,7 +13,7 @@ from pathlib import Path
 # Add the skill directory to path
 sys.path.insert(0, str(Path(__file__).parent))
 
-from de_ai import de_ai_text, analyze_ai_score
+from de_ai import de_ai_text, analyze_ai_score, create_ascii_visual
 
 def get_recent_assistant_output():
     """Get the most recent assistant output from conversation history."""
@@ -47,33 +47,51 @@ def main():
     # Analyze the original text
     score, issues = analyze_ai_score(input_text)
 
-    if score > 0:
-        print(f"\n📊 Original AI Score: {score}/100")
-        if issues and score > 20:
-            print("\n🔍 Issues detected:")
-            for issue in issues[:5]:
-                print(f"  • {issue}")
+    # Transform the text with change tracking
+    transformed, changes = de_ai_text(input_text, track_changes=True)
 
-    # Transform the text
-    transformed = de_ai_text(input_text)
+    # Analyze the result
+    new_score, _ = analyze_ai_score(transformed)
 
-    # Show the result
+    # Create and show visualization
+    visual = create_ascii_visual(int(score), int(new_score), len(changes))
+    print("\n" + visual)
+
+    # Show the transformed text
     print("\n" + "="*60)
     print("✨ DE-AI'D VERSION")
     print("="*60 + "\n")
     print(transformed)
 
-    # Show improvement if significant
-    if score > 20:
-        new_score, _ = analyze_ai_score(transformed)
-        improvement = score - new_score
-        print(f"\n📈 Result: AI score reduced from {score} to {new_score} (-{improvement} points)")
+    # Document changes if any
+    if changes:
+        print("\n" + "="*60)
+        print("📝 CHANGES MADE:")
+        print("="*60)
+        for i, (change_type, _, _) in enumerate(changes, 1):
+            print(f"  {i}. {change_type}")
+        print()
 
-        if new_score > 30:
-            print("\n💡 Tip: The text still has some AI patterns. Consider:")
-            print("  • Adding more specific examples from your experience")
-            print("  • Including actual names, dates, or numbers")
-            print("  • Writing in your natural voice and rhythm")
+    # Show original text at the end
+    print("="*60)
+    print("📄 ORIGINAL TEXT:")
+    print("="*60 + "\n")
+    print(input_text)
+
+    # Show detailed issues if high AI score
+    if score > 20 and issues:
+        print("\n" + "="*60)
+        print("🔍 AI PATTERNS DETECTED:")
+        print("="*60)
+        for issue in issues:
+            print(f"  • {issue}")
+
+    # Tips if still has AI patterns
+    if new_score > 30:
+        print("\n💡 Tip: The text still has some AI patterns. Consider:")
+        print("  • Adding more specific examples from your experience")
+        print("  • Including actual names, dates, or numbers")
+        print("  • Writing in your natural voice and rhythm")
 
 if __name__ == "__main__":
     main()

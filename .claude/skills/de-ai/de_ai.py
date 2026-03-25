@@ -205,35 +205,123 @@ def simplify_structure(text: str) -> str:
 
     return '. '.join(result)
 
-def de_ai_text(text: str, preserve_meaning: bool = True) -> str:
+def de_ai_text(text: str, preserve_meaning: bool = True, track_changes: bool = False) -> Tuple[str, List[Tuple[str, str, str]]]:
     """
     Main transformation function.
 
     Args:
         text: The text to transform
         preserve_meaning: If True, be more conservative with changes
+        track_changes: If True, return a list of changes made
 
     Returns:
-        De-AI'd text that sounds more human
+        Tuple of (De-AI'd text, list of changes if track_changes=True)
     """
     if not text:
-        return text
+        return text, []
 
-    # Apply transformations
+    changes = []
+    original = text
+
+    # Track changes for each transformation
+    prev_text = text
     text = remove_phrases(text)
+    if text != prev_text and track_changes:
+        changes.append(("Removed AI phrases", prev_text[:50] + "...", text[:50] + "..."))
+
+    prev_text = text
     text = replace_ai_words(text)
+    if text != prev_text and track_changes:
+        changes.append(("Replaced AI words", prev_text[:50] + "...", text[:50] + "..."))
+
+    prev_text = text
     text = reduce_hedging(text)
+    if text != prev_text and track_changes:
+        changes.append(("Reduced hedging", prev_text[:50] + "...", text[:50] + "..."))
+
+    prev_text = text
     text = simplify_structure(text)
+    if text != prev_text and track_changes:
+        changes.append(("Removed em dashes", prev_text[:50] + "...", text[:50] + "..."))
+
+    prev_text = text
     text = add_human_markers(text)
+    if text != prev_text and track_changes:
+        changes.append(("Added contractions", prev_text[:50] + "...", text[:50] + "..."))
 
     if not preserve_meaning:
+        prev_text = text
         text = break_rhythm(text)
+        if text != prev_text and track_changes:
+            changes.append(("Broke rhythm", prev_text[:50] + "...", text[:50] + "..."))
 
     # Final cleanup
     text = re.sub(r'\s+', ' ', text)
     text = re.sub(r'\n\s*\n\s*\n', '\n\n', text)  # Max two newlines
 
-    return text.strip()
+    return text.strip(), changes
+
+def create_ascii_visual(original_score: int, new_score: int, changes_count: int) -> str:
+    """
+    Create a cute ASCII visualization of the de-AI transformation.
+    Max 7 lines tall.
+    """
+    improvement = original_score - new_score
+
+    # Pick visualization based on improvement level
+    if improvement >= 70:
+        # Major transformation - robot to human
+        visual = [
+            "  🤖 → 🧑  TRANSFORMATION COMPLETE!",
+            "  ╔═══════════════════════════════╗",
+            f"  ║ AI Score: {original_score:3d} → {new_score:3d} (-{improvement})     ║",
+            f"  ║ Changes Made: {changes_count:2d}              ║",
+            "  ║ [████████████████░░] 90%      ║",
+            "  ╚═══════════════════════════════╝",
+            "  ✨ Now sounds authentically human!"
+        ]
+    elif improvement >= 40:
+        # Good improvement
+        visual = [
+            "  🤖 → 😊  MUCH BETTER!",
+            "  ┌─────────────────────────────┐",
+            f"  │ AI Score: {original_score:3d} → {new_score:3d} (-{improvement})   │",
+            f"  │ Changes: {changes_count:2d}                  │",
+            "  │ [███████████░░░░░░] 65%      │",
+            "  └─────────────────────────────┘",
+            "  ✓ Significantly more natural"
+        ]
+    elif improvement >= 20:
+        # Moderate improvement
+        visual = [
+            "  🤖 → 🙂  IMPROVED",
+            "  ┌─────────────────────────────┐",
+            f"  │ Score: {original_score} → {new_score} (-{improvement})           │",
+            f"  │ {changes_count} changes applied            │",
+            "  │ [██████░░░░░░░░░░] 35%       │",
+            "  └─────────────────────────────┘",
+            "  → Noticeably more human"
+        ]
+    elif improvement > 0:
+        # Minor improvement
+        visual = [
+            "  🤖 → 🤔  SLIGHTLY ADJUSTED",
+            f"  Score: {original_score} → {new_score} (-{improvement})",
+            f"  Made {changes_count} small tweaks",
+            "  [███░░░░░░░░░░░░] 20%",
+            "  → Minor improvements applied"
+        ]
+    else:
+        # Already human
+        visual = [
+            "  🧑 ✓  ALREADY HUMAN!",
+            f"  Score: {original_score}/100 (excellent)",
+            "  No AI patterns detected",
+            "  ──────────────────────",
+            "  This text sounds natural!"
+        ]
+
+    return '\n'.join(visual[:7])  # Ensure max 7 lines
 
 def analyze_ai_score(text: str) -> Tuple[float, List[str]]:
     """
@@ -295,24 +383,45 @@ if __name__ == "__main__":
 
     # Analyze first
     score, issues = analyze_ai_score(text)
-    if score > 0:
-        print(f"\n📊 AI Score: {score}/100")
-        if issues:
-            print("Issues found:")
-            for issue in issues[:5]:  # Show top 5 issues
-                print(f"  • {issue}")
-        print()
 
-    # Transform
-    result = de_ai_text(text)
+    # Transform with change tracking
+    result, changes = de_ai_text(text, track_changes=True)
 
-    print("=" * 50)
+    # Analyze the result
+    new_score, _ = analyze_ai_score(result)
+
+    # Create visualization
+    visual = create_ascii_visual(int(score), int(new_score), len(changes))
+
+    # Output the results
+    print("\n" + visual)
+    print("\n" + "=" * 50)
     print("DE-AI'D TEXT:")
     print("=" * 50)
     print(result)
 
-    # Show improvement
-    new_score, _ = analyze_ai_score(result)
-    if score > 0:
-        print()
-        print(f"✨ New AI Score: {new_score}/100 (improved by {score - new_score} points)")
+    # Document changes
+    if changes:
+        print("\n" + "=" * 50)
+        print("CHANGES MADE:")
+        print("=" * 50)
+        for i, (change_type, before, after) in enumerate(changes, 1):
+            print(f"{i}. {change_type}")
+            if len(before) < 100:
+                print(f"   Before: {before}")
+                print(f"   After:  {after}")
+            print()
+
+    # Show original text
+    print("=" * 50)
+    print("ORIGINAL TEXT:")
+    print("=" * 50)
+    print(text)
+
+    # Detailed issues if high AI score
+    if score > 20 and issues:
+        print("\n" + "=" * 50)
+        print("AI PATTERNS DETECTED:")
+        print("=" * 50)
+        for issue in issues:
+            print(f"  • {issue}")
