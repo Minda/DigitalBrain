@@ -131,21 +131,22 @@ graph TD
 
 **Command**: `/name` (previously `/rename`)
 
-**NEW BEHAVIOR**:
-- **Automatically picks and applies the best title** based on conversation analysis
-- **Shows 4 alternative suggestions** with copy-paste commands for easy selection
-- **No more multiple prompts** - instant naming with options to change
+**UPDATED BEHAVIOR** (as of Apr 2026):
+- **Automatically applies the best title** immediately when invoked
+- **Prints confirmation** showing which title was applied
+- **Shows 3 alternative options** if user wants to change
+- **No interaction required** - instant naming with alternatives shown
 
 **Usage**:
 ```bash
-# Auto-rename with best suggestion (default)
-python3 .claude/skills/conversations-manage/auto_rename.py
+# Default: Auto-apply best title + show alternatives
+python3 .claude/skills/conversations-manage/suggest_names.py
 
-# Pick a specific suggestion (1-4)
-python3 .claude/skills/conversations-manage/auto_rename.py --pick 2
+# Interactive mode: Choose from 4 options manually
+python3 .claude/skills/conversations-manage/suggest_names.py --interactive
 
-# Use custom title
-python3 .claude/skills/conversations-manage/auto_rename.py --custom "My Custom Title"
+# Direct rename with custom title
+python3 .claude/skills/conversations-manage/rename_conversation.py --title "My Custom Title"
 ```
 
 **⚠️ CRITICAL**: Proper naming requires TWO steps:
@@ -161,9 +162,15 @@ The scripts handle both steps automatically!
 
 See `references/rename-implementation.md` for details.
 
-### 2. Suggest Titles
+### 2. Suggest Titles (Auto-Apply)
 
-When user hasn't provided title, analyze conversation and generate 4 suggestions:
+**NEW BEHAVIOR**: Automatically applies first suggestion as default, then shows alternatives.
+
+When `/name` is invoked, the script:
+1. Analyzes conversation content
+2. **Automatically applies the best title** (first suggestion)
+3. **Prints confirmation** of applied title on command line
+4. **Shows 3 alternative options** user can choose with `--interactive`
 
 **Analysis criteria**:
 - Actions performed (create, fix, update, search)
@@ -177,6 +184,16 @@ When user hasn't provided title, analyze conversation and generate 4 suggestions
 - Include specific context (files/tech)
 - Different opening for each (easy scanning)
 - Keep differentiating info early
+- Auto-applies contextual emoji
+
+**Usage**:
+```bash
+# Default: Auto-apply first title + show alternatives
+python3 .claude/skills/conversations-manage/suggest_names.py
+
+# Interactive: Choose from 4 options manually
+python3 .claude/skills/conversations-manage/suggest_names.py --interactive
+```
 
 See `references/title-generation.md` for examples.
 
