@@ -118,6 +118,64 @@ def extract_main_intent(content):
     return first_sentence[:60] if first_sentence else "Conversation"
 
 
+def get_contextual_emoji(title_text, features):
+    """Select an appropriate emoji based on title content"""
+
+    # Keywords to emoji mapping (ordered by priority)
+    emoji_map = {
+        # Tech/Code
+        'code': '💻', 'script': '📜', 'debug': '🐛', 'error': '❌', 'fix': '🔧',
+        'python': '🐍', 'javascript': '📘', 'rust': '🦀', 'api': '🔌', 'database': '🗄️',
+
+        # AI/ML
+        'ai': '🤖', 'model': '🧠', 'agent': '🤝', 'neural': '🕸️', 'training': '🎯',
+        'safety': '🛡️', 'alignment': '🎯', 'llm': '🧠', 'gpt': '🤖', 'claude': '🌟',
+
+        # Research/Learning
+        'research': '🔬', 'study': '📚', 'learn': '🎓', 'course': '📖', 'problem': '🧩',
+        'question': '❓', 'analyze': '📊', 'explore': '🔍', 'discover': '✨', 'test': '🧪',
+
+        # Writing/Content
+        'write': '✍️', 'document': '📄', 'note': '📝', 'article': '📰', 'blog': '📓',
+        'draft': '📝', 'edit': '✏️', 'review': '👀', 'summary': '📋', 'report': '📈',
+
+        # Project/Task
+        'project': '🎯', 'task': '✅', 'todo': '📌', 'plan': '🗓️', 'build': '🔨',
+        'create': '✨', 'setup': '⚙️', 'config': '🔧', 'install': '📦', 'deploy': '🚀',
+
+        # Data/Files
+        'data': '💾', 'file': '📁', 'download': '⬇️', 'upload': '⬆️', 'backup': '💿',
+        'archive': '🗂️', 'extract': '📤', 'compress': '🗜️', 'convert': '🔄', 'parse': '🔍',
+
+        # Special Topics
+        'nerdsnipe': '🧲', 'paradox': '⚡', 'violation': '🎯', 'multi-agent': '🤖',
+        'notion': '📔', 'obsidian': '💎', 'vim': '📝', 'terminal': '💻', 'bash': '🖥️',
+
+        # Status/Action
+        'success': '✅', 'complete': '🎉', 'fail': '❌', 'warning': '⚠️', 'urgent': '🚨',
+        'update': '🔄', 'sync': '🔄', 'refresh': '♻️', 'optimize': '⚡', 'improve': '📈'
+    }
+
+    title_lower = title_text.lower()
+
+    # Check for keywords in order
+    for keyword, emoji in emoji_map.items():
+        if keyword in title_lower:
+            return emoji
+
+    # Feature-based fallbacks
+    if features.get('errors'):
+        return '🔧'
+    elif features.get('skills'):
+        return '✨'
+    elif features.get('tools_used'):
+        return '🛠️'
+
+    # Random interesting fallbacks
+    import random
+    fallback_emojis = ['📌', '🎯', '💡', '🌟', '✨', '🔍', '📊', '🎨']
+    return random.choice(fallback_emojis)
+
 def generate_title_suggestions(features):
     """Generate 4 different title suggestions based on features"""
     suggestions = []
@@ -199,7 +257,7 @@ def generate_title_suggestions(features):
             if fallback not in suggestions and len(suggestions) < 4:
                 suggestions.append(fallback)
 
-    # Clean up and truncate suggestions
+    # Clean up and truncate suggestions, and add emojis
     final_suggestions = []
     for i, title in enumerate(suggestions[:4]):
         # Clean up extra spaces, capitalize properly
@@ -210,7 +268,12 @@ def generate_title_suggestions(features):
         # Truncate to reasonable length but keep meaningful
         if len(title) > 50:
             title = title[:47] + "..."
-        final_suggestions.append(title)
+
+        # Add contextual emoji at the start
+        emoji = get_contextual_emoji(title, features)
+        title_with_emoji = f"{emoji} {title}"
+
+        final_suggestions.append(title_with_emoji)
 
     return final_suggestions
 

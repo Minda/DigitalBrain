@@ -89,13 +89,15 @@ def rename_conversation_with_feedback(new_title, conversation_id=None):
                 # Track if this is a custom-title type object
                 if data.get('type') == 'custom-title':
                     custom_title_found = True
+                    # Store the old title before updating
+                    old_title = data.get('customTitle', 'Untitled')
                     # Update this line with new title
                     data['customTitle'] = new_title
                     feedback["modified_lines"].append(i)
                     feedback["changes"].append({
                         "line": i,
                         "type": "updated",
-                        "before": feedback["previous_title"],
+                        "before": old_title,
                         "after": new_title
                     })
 
@@ -103,6 +105,7 @@ def rename_conversation_with_feedback(new_title, conversation_id=None):
                 if first_message_line == -1 and data.get('role'):
                     first_message_line = i
 
+                # IMPORTANT: Append the potentially modified data, not the original
                 lines.append(json.dumps(data, ensure_ascii=False))
 
             except json.JSONDecodeError:

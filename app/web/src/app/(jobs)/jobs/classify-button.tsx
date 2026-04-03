@@ -17,7 +17,7 @@ export function ClassifyButton() {
     setState({ status: "loading" });
 
     try {
-      const res = await fetch("/api/jobs/classify", {
+      const res = await fetch("/api/postings/classify", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ batchSize: 50 }),

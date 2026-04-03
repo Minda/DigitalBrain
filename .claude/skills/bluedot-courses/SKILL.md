@@ -13,6 +13,18 @@ Triggers:
 
 ## Course Information
 
+### Impact Course (2026)
+**Course URL:** [Add course URL when available]
+**Local Project:** `personal/projects/bluedot-impact/`
+**Notion Project Page:** [Add Notion URL]
+**Duration:** [Add duration]
+**Start Date:** March 2026
+
+**Key Materials:**
+- Research Agenda: `personal/projects/bluedot-impact/109_concrete_problems_multiagent_safety.md`
+- Moltbook Papers Analysis: `personal/projects/bluedot-impact/moltbook-analysis.md`
+- Course Notes: `personal/projects/bluedot-impact/notes/`
+
 ### Technical AI Safety Project (2025)
 **Course URL:** https://bluedot.org/courses/technical-ai-safety-project/1/1
 **Local Project:** `personal/projects/bluedot-ai-safety-project/`

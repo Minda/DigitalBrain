@@ -10,13 +10,72 @@ Manage Claude Code conversation history: name, organize, search, and maintain co
 
 **New: Auto-Naming** - Conversations are now automatically given a working name based on the first user message. No more untitled conversations! Users can still rename with `/name` command.
 
+## Common Failure Modes & Troubleshooting
+
+### 🔴 Title Not Appearing in Claude History
+
+**Symptom:** Renamed conversation but title doesn't show in Claude UI
+
+**Possible Causes:**
+1. **Script name mismatch**: `suggest_names.py` vs `suggest_titles.py`
+   - **Fix:** Check for symlink: `ls -la .claude/skills/conversations-manage/suggest_names.py`
+   - If missing: `ln -s suggest_titles.py suggest_names.py`
+
+2. **Title suggested but not saved**: Only generated suggestions without calling rename
+   - **Fix:** Must call `rename_conversation.py` to persist the title
+   - **Verify:** Check JSONL file for `customTitle` field
+
+3. **Wrong conversation file**: Renamed wrong or old conversation
+   - **Fix:** Script uses most recent by mtime - check if correct file
+   - **Verify:** `ls -lt ~/.claude/projects/*/‌*.jsonl | head -5`
+
+4. **UI cache issue**: Claude UI hasn't refreshed
+   - **Fix:** Refresh Claude window or restart Claude
+   - **Verify:** Check JSONL directly for `type: "custom-title"` entry
+
+### 🟡 Verification Steps
+
+After renaming, verify success:
+```bash
+# Check the JSONL file has customTitle
+grep customTitle ~/.claude/projects/*/*.jsonl | tail -1
+
+# Should show something like:
+# {"type":"custom-title","customTitle":"🧲 Your Title Here",...}
+```
+
+### 🟢 Complete Renaming Flow
+
+1. **Generate suggestions** → `suggest_titles.py` (now with emojis!)
+2. **User selects title** → Choice captured
+3. **Apply rename** → `rename_conversation.py` writes to JSONL
+4. **Verify in file** → Check for `customTitle` entry
+5. **Confirm in UI** → Should appear in Claude history
+
+### 🔍 Diagnostic Tool
+
+Run diagnosis if rename isn't working:
+```bash
+# Diagnose current conversation
+python3 .claude/skills/conversations-manage/diagnose_rename.py
+
+# Diagnose specific conversation
+python3 .claude/skills/conversations-manage/diagnose_rename.py [conversation-id]
+```
+
+The diagnostic will:
+- ✅ Check if all scripts exist and are linked correctly
+- ✅ Find the conversation JSONL file
+- ✅ Search for `customTitle` entries
+- ✅ Report exact line numbers where title appears
+- ❌ Identify missing titles and suggest fixes
+
 ## Workflow
 
 ```mermaid
 graph TD
     Start{Action?} -->|Auto-name| A1[First User Message]
-    Start -->|Name/Rename| R1[User Provides Title?]
-    Start -->|Suggest| S1[Analyze Conversation<br/>Actions/Files/Tech]
+    Start -->|Name/Rename| N1[auto_rename.py]
     Start -->|List| L1[Scan JSONL Files<br/>Get customTitle]
     Start -->|Search| Q1[Query Title/Content]
     Start -->|Organize| O1[Group by Date]
@@ -26,15 +85,10 @@ graph TD
     A2 --> A3[Apply Title<br/>Silently]
     A3 --> Done([Success])
 
-    R1 -->|Yes| R2[Use rename_conversation.py]
-    R1 -->|No| S1
-
-    S1 --> S2[Generate 4 Titles<br/>Action-based/Context-aware]
-    S2 --> S3[AskUserQuestion]
-    S3 --> R2
-
-    R2 --> R3[Update Metadata<br/>+ Add custom-title Entry]
-    R3 --> Done([Success])
+    N1 --> N2[Generate 4 Titles<br/>Analyze Conversation]
+    N2 --> N3[Auto-Apply Best Title]
+    N3 --> N4[Show Alternatives<br/>with Copy Commands]
+    N4 --> Done
 
     L1 --> L2[Sort by mtime<br/>Show Recent 10]
     L2 --> Done
@@ -48,8 +102,8 @@ graph TD
     B1 --> B2[Create Timestamped<br/>Backup Dir]
     B2 --> Done
 
-    style R3 fill:#4ecdc4
-    style S2 fill:#ffe66d
+    style N3 fill:#4ecdc4
+    style N2 fill:#ffe66d
     style Done fill:#95e1d3
 ```
 
@@ -77,13 +131,28 @@ graph TD
 
 **Command**: `/name` (previously `/rename`)
 
+**NEW BEHAVIOR**:
+- **Automatically picks and applies the best title** based on conversation analysis
+- **Shows 4 alternative suggestions** with copy-paste commands for easy selection
+- **No more multiple prompts** - instant naming with options to change
+
+**Usage**:
+```bash
+# Auto-rename with best suggestion (default)
+python3 .claude/skills/conversations-manage/auto_rename.py
+
+# Pick a specific suggestion (1-4)
+python3 .claude/skills/conversations-manage/auto_rename.py --pick 2
+
+# Use custom title
+python3 .claude/skills/conversations-manage/auto_rename.py --custom "My Custom Title"
+```
+
 **⚠️ CRITICAL**: Proper naming requires TWO steps:
 1. Update `customTitle` in metadata
 2. Add `custom-title` type entry to JSONL
 
-**Always use**: `python3 .claude/skills/conversations-manage/rename_conversation.py "Title"`
-
-Never update metadata alone - won't show in Claude UI!
+The scripts handle both steps automatically!
 
 **Correct format**:
 ```json
@@ -139,9 +208,9 @@ Copies all JSONL files with metadata preserved.
 
 **Auto-naming**: Happens automatically on first user message (no action needed)
 
-**Suggest titles**: "Name this conversation" → 4 intelligent options
+**Name/Rename with auto-pick**: "/name" → Instantly applies best title + shows 4 alternatives
 
-**Name/Rename**: "/name" or "Name conversation to 'AI Safety Research'" → Updates title
+**Name with specific title**: "/name to 'AI Safety Research'" → Updates to your custom title
 
 **List**: "Show recent conversations" → Last 10 with dates
 

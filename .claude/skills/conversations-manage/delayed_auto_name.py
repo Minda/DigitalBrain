@@ -12,7 +12,7 @@ from datetime import datetime
 from auto_name import extract_quick_title, apply_auto_name
 
 
-def wait_for_context(conversation_id=None, timeout=30, min_messages=3):
+def wait_for_context(conversation_id=None, timeout=30, min_messages=3, wait_for_assistant=True):
     """
     Wait for enough conversation context before auto-naming.
 
@@ -20,6 +20,7 @@ def wait_for_context(conversation_id=None, timeout=30, min_messages=3):
         conversation_id: Specific conversation ID (optional)
         timeout: Maximum seconds to wait
         min_messages: Minimum number of messages before naming
+        wait_for_assistant: Wait for at least one assistant response
 
     Returns:
         Tuple of (success, conversation_text)
@@ -79,18 +80,35 @@ def wait_for_context(conversation_id=None, timeout=30, min_messages=3):
                     except json.JSONDecodeError:
                         continue
 
-            # Check if we have enough messages
-            if len(messages) >= min_messages:
-                # Combine user messages for context
-                user_messages = [m['content'] for m in messages if m['role'] == 'user']
-                # Also consider assistant responses for better context
-                assistant_messages = [m['content'] for m in messages if m['role'] == 'assistant']
+            # Check if we have enough messages and at least one assistant response
+            user_count = len([m for m in messages if m['role'] == 'user'])
+            assistant_count = len([m for m in messages if m['role'] == 'assistant'])
 
+            has_enough = len(messages) >= min_messages
+            has_assistant = not wait_for_assistant or assistant_count > 0
+
+            if has_enough and has_assistant:
                 # Build context from both user and assistant messages
                 context_parts = []
-                for msg in messages[:5]:  # Look at first 5 messages
-                    if msg['role'] == 'user':
-                        context_parts.append(msg['content'])
+
+                # Include first user message for primary intent
+                user_messages = [m for m in messages if m['role'] == 'user']
+                if user_messages:
+                    context_parts.append(user_messages[0]['content'])
+
+                # Look for substantive assistant responses that indicate the actual work
+                for msg in messages[:7]:  # Look at first 7 messages
+                    if msg['role'] == 'assistant':
+                        # Skip generic bootup messages
+                        content_lower = msg['content'].lower()
+                        if any(skip in content_lower for skip in [
+                            'loaded config', 'loaded projects', 'ready', 'oriented',
+                            'gtd quick commands', 'checking', 'loading'
+                        ]):
+                            continue
+                        # This is likely substantive work
+                        context_parts.append(msg['content'][:200])
+                        break
 
                 conversation_text = ' '.join(context_parts)
                 return True, conversation_text
@@ -121,9 +139,33 @@ def generate_contextual_title(conversation_text):
     # If title is still generic, try harder
     if title.startswith("Session "):
         # Try to extract the most substantive part
-        words = conversation_text.split()
+        text_lower = conversation_text.lower()
+
+        # Look for specific problem descriptions
+        problem_patterns = [
+            (r"doesn't seem to be ([\w\s]+)", lambda m: f"Fix {m.group(1)}"),
+            (r"issue with ([\w\s]+)", lambda m: f"Resolve {m.group(1)} issue"),
+            (r"problem with ([\w\s]+)", lambda m: f"Fix {m.group(1)} problem"),
+            (r"improve ([\w\s]+)", lambda m: f"Improve {m.group(1)}"),
+            (r"investigating ([\w\s]+)", lambda m: f"Investigate {m.group(1)}"),
+            (r"analyzing ([\w\s]+)", lambda m: f"Analyze {m.group(1)}"),
+        ]
+
+        import re
+        for pattern, formatter in problem_patterns:
+            match = re.search(pattern, text_lower)
+            if match:
+                try:
+                    title = formatter(match)
+                    # Clean and capitalize
+                    title = re.sub(r'\s+', ' ', title).strip()
+                    if len(title) <= 50:
+                        return title
+                except:
+                    continue
 
         # Look for the most important technical term or action
+        words = conversation_text.split()
         important_terms = []
         for word in words:
             if len(word) > 4 and word[0].isupper():

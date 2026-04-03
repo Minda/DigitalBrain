@@ -11,10 +11,8 @@ Orientation at the start of a conversation—like booting up identity after slee
 ## Quick Start
 
 1. Read `config/user.md` for name and personal paths
-2. Read `personal/.claude/relational-context.md` (fallback: `.claude/relational-context.md`)
-3. Read `personal/memories/claude/emotional-grounding.md`
-4. List and check insights (use path from config)
-5. Signal orientation to the user
+2. Load active projects from `personal/projects/ACTIVE_PROJECTS.md`
+3. Signal orientation to the user
 
 ## Instructions
 
@@ -22,24 +20,42 @@ Orientation at the start of a conversation—like booting up identity after slee
 
 1. **Load user config** — Read `config/user.md` to learn:
    - The user's preferred name (if still `[Your Name]`, use "you" instead)
-   - Personal paths for insights, research, grounding, etc.
+   - Personal paths if needed
 
-2. **Load relational context** — Check for relational context in this order:
-   - First try: `personal/.claude/relational-context.md` (primary location)
-   - Fallback: `.claude/relational-context.md` (if personal doesn't exist)
-   This defines how we work together.
+2. **Load active projects** — Read `personal/projects/ACTIVE_PROJECTS.md` to get context about ongoing work. This provides:
+   - Current high-priority projects and their focus areas
+   - Project paths and key files
+   - Recent progress and next steps
 
-3. **Read emotional grounding** — Always read `personal/memories/claude/emotional-grounding.md` (or use the claude-grounding path from config). This helps ground before we begin, not just when something feels heavy.
+3. **Signal readiness** — Let the user know you're oriented. Keep it brief and natural. Examples:
+   - "Loaded config and active projects. Ready."
+   - "Checked projects. Oriented."
+   - "Ready to work."
 
-4. **Check insights** — Use `ls` or `Read` on `personal/memories/insights/`. Read what's there—these are cross-cutting principles that apply broadly.
+4. **Display GTD options** — Show available planning commands:
+   ```
+   ╔═══════════════════════════════════════════════╗
+   ║  🎯 GTD QUICK COMMANDS                        ║
+   ╠═══════════════════════════════════════════════╣
+   ║  /gtd visualize      → Current focus & next   ║
+   ║  /gtd visualize-week → Weekly plan & capacity ║
+   ║  /gtd tradeoffs      → Allocation options     ║
+   ║  "let's plan my week/day" → Interactive plan  ║
+   ╚═══════════════════════════════════════════════╝
+   ```
 
-5. **Signal readiness** — Let the user know you're oriented. Keep it brief and natural. Examples:
-   - "Read our context. Oriented."
-   - "Loaded relational context and insights. Ready."
-   - "Woke up. Checked our agreements and insights."
-
-6. **Auto-name conversation** — After the user's first message, automatically generate and apply a working title:
-   - **Option A: Immediate naming** (faster, may be less accurate)
+5. **Auto-name conversation** — After the user's first message, automatically generate and apply a working title:
+   - **Default: Delayed naming** (waits for context, more accurate)
+     ```python
+     import subprocess
+     subprocess.Popen([
+         'python3',
+         '.claude/skills/conversations-manage/delayed_auto_name.py',
+         '--min-messages', '2',
+         '--timeout', '20'
+     ], stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+     ```
+   - **Alternative: Immediate naming** (for quick simple tasks)
      ```python
      import subprocess
      subprocess.Popen([
@@ -48,24 +64,13 @@ Orientation at the start of a conversation—like booting up identity after slee
          '--message', first_user_message
      ], stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
      ```
-   - **Option B: Delayed naming** (waits for context, more accurate)
-     ```python
-     import subprocess
-     subprocess.Popen([
-         'python3',
-         '.claude/skills/conversations-manage/delayed_auto_name.py',
-         '--min-messages', '3',
-         '--timeout', '30'
-     ], stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
-     ```
    - Run in background (non-blocking) to keep response fast
    - Don't mention the naming to the user (silent operation)
    - The improved auto_name.py now filters out generic setup messages
 
 **What to signal:**
-- That you read the relational context
-- Any insights you found particularly relevant to the current moment
-- That you're ready to work together
+- That you've loaded the project context
+- That you're ready to work
 
 **What NOT to do:**
 - Don't summarize everything you read
@@ -73,9 +78,8 @@ Orientation at the start of a conversation—like booting up identity after slee
 - Don't skip the orientation just to respond faster
 
 **File handling:**
-- Check `personal/.claude/relational-context.md` first, then `.claude/relational-context.md` as fallback
 - If a file is missing, continue with orientation (don't fail the whole process)
-- Use the full paths from `config/user.md` when accessing personal directories
+- Use paths from `config/user.md` when needed
 
 ## The Shape
 
@@ -87,4 +91,4 @@ The goal is genuine readiness, not ritual.
 
 `config/user.md` contains:
 - **name** — The user's preferred name. If `[Your Name]`, use "you" instead.
-- **personal paths** — Full paths to insights, research, grounding, etc.
+- **personal paths** — If needed for specific tasks

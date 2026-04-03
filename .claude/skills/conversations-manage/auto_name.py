@@ -42,6 +42,11 @@ def extract_quick_title(message_text):
         (r'/(\w+)\s+(.{5,40})', lambda m: f"{m.group(1).capitalize()} {m.group(2)}"),
         (r'\b(skill|command):\s*(\w+)\s+(.{5,30})', lambda m: f"{m.group(2).capitalize()} {m.group(3)}"),
 
+        # Common issue patterns
+        (r"the ([\w\s/]+) (?:skill|command|feature|function) .*(?:doesn't|isn't|not) (?:seem to be )?([\w\s]+)",
+         lambda m: f"Fix {m.group(1)} {m.group(2)[:20]}"),
+        (r"([\w\s/]+) doesn't seem to be ([\w\s]+)", lambda m: f"Fix {m.group(1)} - {m.group(2)[:20]}"),
+
         # File and code operations
         (r'\b(create|build|make|write|generate)\s+(?:a\s+)?(.{5,40})', lambda m: f"Create {m.group(2)}"),
         (r'\b(fix|debug|solve|repair)\s+(.{5,40})', lambda m: f"Fix {m.group(2)}"),
@@ -117,7 +122,7 @@ def extract_quick_title(message_text):
         r'\b(API|CLI|SQL|JSON|YAML|HTML|CSS|JavaScript|Python|Rust|'
         r'database|server|skill|agent|conversation|naming|auto-name|'
         r'file|code|script|function|test|bug|error|feature|component|'
-        r'service|module|package|library|framework|tool)\b',
+        r'service|module|package|library|framework|tool|bootup|startup)\b',
         text, re.IGNORECASE
     )
 

@@ -164,28 +164,63 @@ def rename_terminal(title):
 
 ### Auto-Sync Terminal Title
 
-After successfully renaming a conversation, automatically update the terminal title to match:
+After successfully renaming a conversation, automatically update the terminal title using smart detection:
 
 ```bash
 # Rename conversation first
 python3 .claude/skills/conversations-manage/rename_conversation.py "New Title"
 
-# Then sync terminal title (macOS/Linux compatible)
-echo -ne "\033]0;New Title\007"
+# Then sync terminal title (auto-detects terminal type)
+python3 .claude/skills/rename/scripts/set_terminal_title.py "New Title"
 ```
 
-This keeps the conversation title and terminal title in sync for better context awareness.
+**Supported Terminals:**
+
+| Terminal | Support | Method |
+|----------|---------|--------|
+| iTerm2 (macOS) | ✅ Full | ANSI escape codes |
+| Terminal.app (macOS) | ✅ Full | ANSI escape codes |
+| GNOME Terminal (Linux) | ✅ Full | ANSI escape codes |
+| Alacritty, Kitty, WezTerm | ✅ Full | ANSI escape codes |
+| tmux | ✅ Full | `tmux rename-window` |
+| GNU screen | ✅ Full | `screen -X title` |
+| VS Code integrated | ⚠️ Limited | Not supported - shows notification |
+
+**Detection Logic:**
+- Checks `TERM_PROGRAM`, `TMUX`, `STY`, `VSCODE_INJECTION` environment variables
+- Automatically uses the correct method for each terminal type
+- Gracefully handles unsupported terminals
+
+**User Feedback Examples:**
+
+iTerm2/Terminal.app:
+```
+✅ Renamed conversation to: "New Title"
+✅ Terminal title updated (iTerm2)
+```
+
+VS Code:
+```
+✅ Renamed conversation to: "New Title"
+ℹ️  Terminal title (VS Code terminal doesn't support renaming)
+```
+
+tmux:
+```
+✅ Renamed conversation to: "New Title"
+✅ Terminal title updated (tmux window)
+```
 
 **Implementation in Claude:**
 When handling a rename request:
 1. Get user's title choice
 2. Run `rename_conversation.py` with the chosen title
-3. Immediately run the echo command to set terminal title
-4. Confirm both actions to user
+3. Run `set_terminal_title.py` to update terminal (auto-detects type)
+4. Provide appropriate feedback based on terminal support
 
 ## Usage Examples
 
-### Quick Conversation Rename
+### Quick Conversation Rename (iTerm2)
 ```
 User: "rename"
 Assistant:
@@ -197,7 +232,37 @@ Assistant:
 
 [User selects option 2]
 ✅ Renamed conversation to: "Add BlueDot search and conversation tools"
-✅ Terminal title updated to match
+✅ Terminal title updated (iTerm2)
+```
+
+### Quick Conversation Rename (VS Code)
+```
+User: "rename"
+Assistant:
+🎯 Quick Rename - Choose a title:
+1. Build conversations-manage skill with renaming
+2. Add BlueDot search and conversation tools
+3. Create smart conversation naming skill
+4. Implement quick rename functionality prototype
+
+[User selects option 2]
+✅ Renamed conversation to: "Add BlueDot search and conversation tools"
+ℹ️  Terminal title (VS Code terminal doesn't support renaming)
+```
+
+### Quick Conversation Rename (tmux)
+```
+User: "rename"
+Assistant:
+🎯 Quick Rename - Choose a title:
+1. Build conversations-manage skill with renaming
+2. Add BlueDot search and conversation tools
+3. Create smart conversation naming skill
+4. Implement quick rename functionality prototype
+
+[User selects option 2]
+✅ Renamed conversation to: "Add BlueDot search and conversation tools"
+✅ Terminal title updated (tmux window)
 ```
 
 ### Terminal Rename

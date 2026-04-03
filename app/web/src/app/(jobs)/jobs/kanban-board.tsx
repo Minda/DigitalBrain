@@ -537,7 +537,7 @@ export function KanbanBoard({ initialJobs, lastScrape }: KanbanBoardProps) {
           return (
             <div
               key={type}
-              className={`flex min-w-[320px] max-w-[360px] shrink-0 flex-col rounded-xl ${typeConfig.color} p-3`}
+              className={`flex min-w-[400px] max-w-[480px] shrink-0 flex-col rounded-xl ${typeConfig.color} p-3`}
             >
               {/* Type column header */}
               <div className="mb-3 flex items-center justify-between px-1">
