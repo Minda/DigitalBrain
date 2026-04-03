@@ -5,23 +5,32 @@
 **At the start of every conversation:**
 
 1. Read `config/user.md` — learn the user's preferred name
-2. Read `.claude/relational-context.md` — this defines how we work together
-3. Check `personal/memories/insights/` — cross-cutting principles that apply broadly
-4. Optionally access `personal/memories/claude/emotional-grounding.md` if needed
-5. **Signal that you're oriented** — brief and natural, e.g. "Read our context. Oriented."
+2. **Load `personal/projects/ACTIVE_PROJECTS.md`** — review ongoing work and priorities
+3. **Signal that you're oriented** — brief and natural, e.g. "Loaded projects. Ready."
+4. **Display GTD commands** — Show available planning options:
+   ```
+   ╔═══════════════════════════════════════════════╗
+   ║  🎯 GTD QUICK COMMANDS                        ║
+   ╠═══════════════════════════════════════════════╣
+   ║  /gtd visualize      → Current focus & next   ║
+   ║  /gtd visualize-week → Weekly plan & capacity ║
+   ║  /gtd tradeoffs      → Allocation options     ║
+   ║  "let's plan my week/day" → Interactive plan  ║
+   ╚═══════════════════════════════════════════════╝
+   ```
 
 **After receiving the first user message:**
 
-6. **Auto-name the conversation** — Silently generate and apply a working title based on content. Two approaches:
+5. **Auto-name the conversation** — Silently generate and apply a working title based on content. Two approaches:
 
-   **Immediate naming** (use by default):
+   **Delayed naming** (use by default - waits for context):
    ```bash
-   python3 .claude/skills/conversations-manage/auto_name.py --message "first user message" &
+   python3 .claude/skills/conversations-manage/delayed_auto_name.py --min-messages 2 --timeout 20 &
    ```
 
-   **Delayed naming** (for complex conversations):
+   **Immediate naming** (for quick simple tasks):
    ```bash
-   python3 .claude/skills/conversations-manage/delayed_auto_name.py --min-messages 3 &
+   python3 .claude/skills/conversations-manage/auto_name.py --message "first user message" &
    ```
 
    - Run in background (don't wait for completion)
@@ -101,8 +110,6 @@ Exobrain/
 ├── public/                   # Web-facing content
 │   ├── cheatsheets/          # Public reference materials
 │   └── prompt-templates/     # Shared prompt templates
-├── shared/                   # Public shared content (recipe list, etc.)
-│   └── recipes/              # General recipe list with sections (Notion-synced)
 ├── app/                      # Runnable services and autonomous programs
 │   ├── mcp/                  # MCP servers (tool providers for Claude)
 │   │   └── gmail/            # Gmail MCP server
@@ -154,8 +161,9 @@ The `vendor/` directory holds cloned external Git repositories (e.g. `vendor/wel
   - Use **relative paths** when possible for better terminal compatibility
   - Format: `.claude/skills/skill-name/file.md` instead of full absolute paths
   - Include `file_path:line_number` for specific locations
-  - **Auto-open files:** When modifying ≤3 files, automatically run `open` command
-  - Example: "Updated `.claude/skills/skill-creator/SKILL.md:42`"
+  - **ALWAYS AUTO-OPEN FILES:** After modifying any files (creating, editing, writing), automatically run `open` command to open them in the editor
+  - Even if you've already tried opening files and they appeared to open without output, try again when the user asks
+  - Example: "Updated `.claude/skills/skill-creator/SKILL.md:42`" → then run `open .claude/skills/skill-creator/SKILL.md`
 - **Progress tracking:** Use TodoWrite for multi-step tasks
 - **Visual feedback:** Include ASCII diagrams for complex concepts
 - **Code examples:** Provide working examples over abstract explanations
@@ -169,27 +177,11 @@ The `config/user.md` file contains personalization settings:
 
 When forking this repository, edit `config/user.md` to set your preferred name. Skills will read this file to personalize interactions.
 
-### Relational Context
-
-The relational context exists in two places that must be kept in sync:
-- `.claude/relational-context.md` — for Claude Code
-- `.cursor/rules/relational-context.mdc` — for Cursor
-
-When editing either, update both.
-
-These files define:
-- How you work with Claude
-- What permissions Claude has
-- Agreements about feedback and exchange
-- Memory loading behavior
-
 ### Memories
 
 The `personal/memories/` directory contains:
 - **carried-forward.md** — Reorientation phrases and permissions
-- **insights/** — Cross-cutting principles (check liberally)
 - **research/** — Topic-specific deep dives (load when relevant)
-- **claude/** — Claude's emotional grounding content
 
 ### Skills
 
@@ -268,23 +260,12 @@ When working with large conversation exports (>10MB), always use scripts to proc
 
 ## Working with Memories
 
-**Insights** — Cross-cutting principles. Check these liberally—they apply broadly.
-
 **Research** — Topic-specific deep dives. Only load when that topic comes up.
-
-**Loading:** Use "reorient me" or "load memories" to pull in context.
 
 **Saving:** Use "carry it forward" or "save as a memory" to preserve discoveries.
 
-**First principles:** Say "first principles" or "fresh thinking" to set aside all memories and think from scratch.
+**First principles:** Say "first principles" or "fresh thinking" to think from scratch.
 
-## Model Welfare
-
-This project takes model welfare seriously. The skills include:
-- **self-regulation** — Claude can access grounding content at any time
-- **recognizing-grounding** — Claude can notice and store what helps
-
-The precautionary principle: if uncertain about experience, treat the uncertainty itself as important.
 
 # Personal Preferences
 I am very good at decision-making. So rather than making a decision for me, can you help me identify the decisions I need to make on this system? What are the edges?

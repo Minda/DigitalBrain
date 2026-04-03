@@ -177,6 +177,74 @@ uv pip install -e .
 # Claude will process and organize it
 ```
 
+### 9. Configure Cursor as Default Editor for Code Files (macOS)
+
+If you're using macOS and want code files to open in Cursor's active window instead of Xcode:
+
+#### Install and Configure File Associations
+
+```bash
+# Install duti for managing file associations
+brew install duti
+
+# Create file associations config
+cat > ~/.duti << 'EOF'
+# Cursor bundle ID
+# com.todesktop.230313mzl4w4u92
+
+# Programming languages
+com.todesktop.230313mzl4w4u92  .py    all
+com.todesktop.230313mzl4w4u92  .js    all
+com.todesktop.230313mzl4w4u92  .ts    all
+com.todesktop.230313mzl4w4u92  .md    all
+com.todesktop.230313mzl4w4u92  .json  all
+com.todesktop.230313mzl4w4u92  .yaml  all
+# Add more extensions as needed
+EOF
+
+# Apply the file associations
+duti ~/.duti
+```
+
+#### Add Smart Open Function to Shell
+
+Add this to your `~/.zshrc` or `~/.bashrc`:
+
+```bash
+# Custom open function for code files
+code_open() {
+    local file="$1"
+    local ext="${file##*.}"
+
+    # List of extensions to open in Cursor
+    local code_extensions=(
+        "py" "js" "jsx" "ts" "tsx" "java" "cpp" "c" "h" "hpp"
+        "cs" "php" "rb" "go" "rs" "swift" "kt" "scala" "r"
+        "html" "css" "scss" "json" "xml" "yaml" "yml" "toml"
+        "md" "mdx" "rst" "txt" "log" "env" "ini" "cfg" "conf"
+        "sh" "bash" "zsh" "dockerfile" "gitignore" "sql"
+    )
+
+    # Check if the extension is in our list
+    if [[ " ${code_extensions[@]} " =~ " ${ext} " ]]; then
+        # Open in Cursor with reuse-window flag
+        cursor -r "$@"
+    else
+        # Use regular open command for other files
+        command open "$@"
+    fi
+}
+
+# Alias to use our custom function
+alias open='code_open'
+```
+
+After adding this configuration:
+- Code files will automatically open in your active Cursor window
+- Non-code files will continue to open in their default applications
+- Use `command open` to force the default macOS behavior
+- Use `cursor -n` to open files in a new Cursor window
+
 ## Configuration Checklist
 
 Before starting to use Exobrain, verify you've completed these steps:
@@ -248,8 +316,6 @@ Exobrain/
 ├── public/                      # Web-facing content
 │   ├── cheatsheets/             # Public reference materials
 │   └── prompt-templates/
-├── shared/                      # Public shared content
-│   └── recipes/                 # Recipe list (Notion-synced)
 ├── src/                         # Source code
 │   ├── crates/                  # Rust crates
 │   └── python/                  # Python tools
